@@ -1,4 +1,4 @@
-**Skinova: AI Skin Disease Detection**
+#**Skinova: AI Skin Disease Detection**
 
 Skinova is an AI-powered skin disease detection and dermatological support system that combines Computer Vision, Deep Learning, Large Language Models (LLMs), and Retrieval-Augmented Generation (RAG) to provide users with preliminary information about possible skin conditions and personalized, knowledge-grounded guidance.
 
