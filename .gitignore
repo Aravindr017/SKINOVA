@@ -1,7 +1,7 @@
 .venv/
 __pycache__/
 *.pyc
-models/*.keras
+.pytest_cache/
 models/*.h5
 models/*_savedmodel/
 .streamlit/
