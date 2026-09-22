@@ -1,0 +1,8 @@
+{
+  "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+  "embedding_dimension": 384,
+  "normalization": "L2 normalized",
+  "similarity": "cosine similarity via inner product",
+  "num_chunks": 46,
+  "num_vectors": 46
+}

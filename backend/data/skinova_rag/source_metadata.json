@@ -1,0 +1,66 @@
+[
+  {
+    "filename": "who_common_skin_diseases_clean.txt",
+    "source": "WHO",
+    "source_type": "clinical_guidance",
+    "title": "Common Skin Diseases for Management or Referral at Primary Health Care Level",
+    "disease": "Common skin diseases",
+    "ham10000_class": null
+  },
+  {
+    "filename": "dermnet_melanoma_clean.txt",
+    "source": "DermNet",
+    "source_type": "dermatology_reference",
+    "title": "Melanoma",
+    "disease": "Melanoma",
+    "ham10000_class": "MEL"
+  },
+  {
+    "filename": "dermnet_melanocytic_naevi_clean.txt",
+    "source": "DermNet",
+    "source_type": "dermatology_reference",
+    "title": "Melanocytic naevi",
+    "disease": "Melanocytic nevus",
+    "ham10000_class": "NV"
+  },
+  {
+    "filename": "dermnet_bcc_clean.txt",
+    "source": "DermNet",
+    "source_type": "dermatology_reference",
+    "title": "Basal cell carcinoma",
+    "disease": "Basal cell carcinoma",
+    "ham10000_class": "BCC"
+  },
+  {
+    "filename": "dermnet_actinic_keratosis_clean.txt",
+    "source": "DermNet",
+    "source_type": "dermatology_reference",
+    "title": "Actinic keratosis",
+    "disease": "Actinic keratosis",
+    "ham10000_class": "AKIEC"
+  },
+  {
+    "filename": "dermnet_seborrhoeic_keratosis_clean.txt",
+    "source": "DermNet",
+    "source_type": "dermatology_reference",
+    "title": "Seborrhoeic keratosis",
+    "disease": "Benign keratosis",
+    "ham10000_class": "BKL"
+  },
+  {
+    "filename": "dermnet_dermatofibroma_clean.txt",
+    "source": "DermNet",
+    "source_type": "dermatology_reference",
+    "title": "Dermatofibroma",
+    "disease": "Dermatofibroma",
+    "ham10000_class": "DF"
+  },
+  {
+    "filename": "dermnet_vascular_lesions_clean.txt",
+    "source": "DermNet",
+    "source_type": "dermatology_reference",
+    "title": "Vascular lesions",
+    "disease": "Vascular lesions",
+    "ham10000_class": "VASC"
+  }
+]
