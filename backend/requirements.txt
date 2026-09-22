@@ -1,3 +1,9 @@
 fastapi
 uvicorn[standard]
 python-multipart
+onnxruntime
+faiss-cpu
+sentence-transformers
+pillow
+numpy
+requests
