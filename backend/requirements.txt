@@ -1,5 +1,6 @@
 # ==========================================
 # SKINOVA - Backend Python Dependencies
+# Optimized for Fast Cloud Deployment (< 512MB RAM)
 # ==========================================
 
 # --- Core Web Framework & Server ---
@@ -8,21 +9,21 @@ uvicorn[standard]>=0.30.0
 pydantic>=2.8.0
 python-multipart>=0.0.12
 
-# --- Deep Learning Inference ---
+# --- Deep Learning Inference (ONNX Engine - Lightweight CPU) ---
 onnxruntime>=1.18.0
 numpy>=1.26.0,<3.0.0
 pillow>=10.4.0
 
-# --- RAG & Semantic Medical Knowledge Retrieval ---
-sentence-transformers>=3.0.0
-faiss-cpu>=1.8.0
-torch>=2.2.0
+# --- Medical RAG & Semantic Search (High-Performance TF-IDF) ---
+scikit-learn>=1.5.0
 
-# --- HTTP & Cloud AI Integration ---
+# --- HTTP & Cloud AI Integration (Google Gemini, OAuth) ---
 requests>=2.32.0
 httpx>=0.27.0
 python-dotenv>=1.0.1
-
-# --- Utilities ---
-scikit-learn>=1.5.0
 tqdm>=4.66.0
+
+# --- Optional Local Heavy Neural Libraries (Disabled for 512MB Free Tier) ---
+# sentence-transformers>=3.0.0
+# faiss-cpu>=1.8.0
+# torch>=2.2.0

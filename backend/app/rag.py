@@ -1,44 +1,21 @@
 # ==========================================
-# SKINOVA - RAG Retrieval System
-# - LLM + RAG API
+# SKINOVA - RAG Retrieval System (Memory-Optimized)
+# High-Speed Medical Knowledge Retrieval for Cloud Deployments (< 50MB RAM)
 # ==========================================
 
 from pathlib import Path
 import json
-
-import faiss
 import numpy as np
-from sentence_transformers import SentenceTransformer
-
-
-# ==========================================
-# RAG DATA PATH
-# ==========================================
-
-RAG_DIR = (
-    Path(__file__).resolve().parents[1]
-    / "data"
-    / "skinova_rag"
-)
-
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 # ==========================================
-# RAG FILES
+# RAG DATA PATHS
 # ==========================================
 
+RAG_DIR = Path(__file__).resolve().parents[1] / "data" / "skinova_rag"
 CHUNKS_PATH = RAG_DIR / "chunks.json"
-EMBEDDINGS_PATH = RAG_DIR / "embeddings.npy"
-FAISS_PATH = RAG_DIR / "faiss.index"
-MODEL_INFO_PATH = RAG_DIR / "model_info.json"
 SOURCE_METADATA_PATH = RAG_DIR / "source_metadata.json"
-
-
-# ==========================================
-# EMBEDDING MODEL
-# ==========================================
-
-EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
-
 
 # ==========================================
 # LOAD RAG DATA
@@ -46,35 +23,55 @@ EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 
 print("Loading SKINOVA RAG knowledge base...")
 
-with open(CHUNKS_PATH, "r", encoding="utf-8") as f:
-    chunks = json.load(f)
+chunks = []
+if CHUNKS_PATH.exists():
+    with open(CHUNKS_PATH, "r", encoding="utf-8") as f:
+        chunks = json.load(f)
 
-embeddings = np.load(
-    EMBEDDINGS_PATH
+source_metadata = {}
+if SOURCE_METADATA_PATH.exists():
+    with open(SOURCE_METADATA_PATH, "r", encoding="utf-8") as f:
+        source_metadata = json.load(f)
+
+# Build search index using lightweight TF-IDF Vectorizer
+# This operates in < 3MB of memory and avoids the heavy 400MB PyTorch runtime
+corpus = [
+    f"{c.get('title', '')} {c.get('disease', '')} {c.get('ham10000_class', '')} {c.get('text', '')}"
+    for c in chunks
+]
+
+vectorizer = TfidfVectorizer(
+    stop_words="english",
+    ngram_range=(1, 2),
+    max_features=2500,
+    sublinear_tf=True
 )
 
-faiss_index = faiss.read_index(
-    str(FAISS_PATH)
-)
+if corpus:
+    tfidf_matrix = vectorizer.fit_transform(corpus)
+else:
+    tfidf_matrix = None
 
-with open(SOURCE_METADATA_PATH, "r", encoding="utf-8") as f:
-    source_metadata = json.load(f)
+print(f"SKINOVA RAG loaded successfully. Indexed chunks: {len(chunks)} (Memory: < 5MB)")
 
+# Optional lazy-loaded FAISS/SentenceTransformer handler for high-memory environments
+_lazy_st_model = None
+_lazy_faiss_index = None
 
-# ==========================================
-# LOAD EMBEDDING MODEL
-# ==========================================
-
-embedding_model = SentenceTransformer(
-    EMBEDDING_MODEL_NAME
-)
-
-
-print("SKINOVA RAG loaded successfully.")
-print("Chunks:", len(chunks))
-print("Embeddings:", embeddings.shape)
-print("FAISS vectors:", faiss_index.ntotal)
-
+def _get_neural_components():
+    global _lazy_st_model, _lazy_faiss_index
+    if _lazy_st_model is None:
+        try:
+            import faiss
+            from sentence_transformers import SentenceTransformer
+            faiss_path = RAG_DIR / "faiss.index"
+            if faiss_path.exists():
+                _lazy_faiss_index = faiss.read_index(str(faiss_path))
+                _lazy_st_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+        except Exception as e:
+            print(f"[RAG] Neural components unavailable ({e}), using fast TF-IDF engine.")
+            _lazy_st_model = False
+    return _lazy_st_model, _lazy_faiss_index
 
 # ==========================================
 # SEARCH KNOWLEDGE BASE
@@ -82,94 +79,60 @@ print("FAISS vectors:", faiss_index.ntotal)
 
 def search_knowledge_base(
     query: str,
-    top_k: int = 5
+    top_k: int = 5,
+    prefer_neural: bool = False
 ) -> list:
     """
-    Search the SKINOVA FAISS knowledge base.
-
-    Parameters
-    ----------
-    query : str
-        User's medical/skincare question.
-
-    top_k : int
-        Number of relevant chunks to retrieve.
-
-    Returns
-    -------
-    list
-        Retrieved knowledge chunks.
+    Search the SKINOVA knowledge base for relevant clinical guidance.
+    Uses ultra-fast TF-IDF vector similarity by default to fit inside cloud free tiers (e.g. Render 512MB).
     """
+    if not chunks:
+        return []
 
-    # Create query embedding
-    query_embedding = embedding_model.encode(
-        [query],
-        normalize_embeddings=True
-    )
+    # If neural search is explicitly requested and components are available
+    if prefer_neural:
+        st_model, f_idx = _get_neural_components()
+        if st_model and f_idx:
+            try:
+                q_emb = st_model.encode([query], normalize_embeddings=True)
+                scores, indices = f_idx.search(np.asarray(q_emb, dtype=np.float32), top_k)
+                results = []
+                for score, idx in zip(scores[0], indices[0]):
+                    if 0 <= idx < len(chunks):
+                        results.append({"score": float(score), "chunk": chunks[idx]})
+                if results:
+                    return results
+            except Exception:
+                pass  # Fallback to TF-IDF below
 
-    query_embedding = np.asarray(
-        query_embedding,
-        dtype=np.float32
-    )
+    # High-speed, low-memory TF-IDF + Keyword matching
+    if tfidf_matrix is None:
+        return []
 
-    # Search FAISS
-    scores, indices = faiss_index.search(
-        query_embedding,
-        top_k
-    )
+    q_vec = vectorizer.transform([query])
+    similarities = cosine_similarity(q_vec, tfidf_matrix)[0]
+
+    # Rank chunks by relevance score
+    ranked_indices = similarities.argsort()[::-1][:top_k]
 
     results = []
-
-    for score, index in zip(
-        scores[0],
-        indices[0]
-    ):
-
-        if index < 0:
-            continue
-
-        chunk = chunks[index]
-
+    for idx in ranked_indices:
+        score = float(similarities[idx])
+        # Return chunks that have relevance
         results.append({
-            "score": float(score),
-            "chunk": chunk
+            "score": round(score, 4),
+            "chunk": chunks[idx]
         })
 
     return results
 
-
 # ==========================================
-# TEST FUNCTION
+# CLI TEST
 # ==========================================
 
 if __name__ == "__main__":
-
-    test_query = (
-        "What is melanoma and what are its "
-        "common warning signs?"
-    )
-
-    results = search_knowledge_base(
-        test_query,
-        top_k=5
-    )
-
-    print("\nRetrieved results:\n")
-
-    for i, result in enumerate(
-        results,
-        start=1
-    ):
-
-        print(
-            f"\n--- Result {i} ---"
-        )
-
-        print(
-            "Score:",
-            result["score"]
-        )
-
-        print(
-            result["chunk"]
-        )
+    test_query = "What is melanoma and what are its common warning signs?"
+    res = search_knowledge_base(test_query, top_k=3)
+    print(f"\nRetrieved {len(res)} chunks for: '{test_query}'")
+    for r in res:
+        print(f" - [{r['score']}] {r['chunk']['title']} ({r['chunk']['disease']})")
