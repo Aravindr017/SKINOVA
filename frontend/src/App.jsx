@@ -362,10 +362,15 @@ export function App() {
       {/* ── Desktop Sidebar ─────────────────────────── */}
       <aside className="sidebar-desktop w-64 h-full flex-shrink-0 border-r flex flex-col"
              style={{background:'#fff', borderColor:'#E2E8F0'}}>
-        {/* Logo */}
-        <div className="p-5 border-b" style={{borderColor:'#E2E8F0'}}>
+        {/* Logo (Clickable to Dashboard) */}
+        <div
+          className="p-5 border-b cursor-pointer hover:bg-slate-50 transition-colors"
+          style={{borderColor:'#E2E8F0'}}
+          onClick={() => setActiveTab('dashboard')}
+          title="Return to Dashboard"
+        >
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center transition-transform hover:scale-105"
                  style={{background:'linear-gradient(135deg,#14B8A6,#0F766E)'}}>
               <Activity size={18} className="text-white"/>
             </div>
@@ -424,8 +429,12 @@ export function App() {
           <aside className="relative z-50 w-72 h-full flex flex-col border-r animate-slide-left"
                  style={{background:'#fff', borderColor:'#E2E8F0'}}>
             <div className="p-5 border-b flex items-center justify-between" style={{borderColor:'#E2E8F0'}}>
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+              <div
+                className="flex items-center gap-3 cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => { setActiveTab('dashboard'); setSidebarOpen(false); }}
+                title="Return to Dashboard"
+              >
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center transition-transform hover:scale-105"
                      style={{background:'linear-gradient(135deg,#14B8A6,#0F766E)'}}>
                   <Activity size={18} className="text-white"/>
                 </div>
@@ -477,11 +486,24 @@ export function App() {
             <Menu size={20}/>
           </button>
 
-          {/* Page title */}
+          {/* Page title / Dashboard Link */}
           <div className="flex-1 min-w-0">
-            <h2 className="text-sm font-semibold text-slate-800 truncate">
-              {NAV_ITEMS.find(n => n.id === activeTab)?.label || 'Dashboard'}
-            </h2>
+            <button
+              type="button"
+              onClick={() => setActiveTab('dashboard')}
+              className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity text-left"
+              title="Return to Dashboard"
+            >
+              <div
+                className="w-7 h-7 rounded-lg flex items-center justify-center md:hidden"
+                style={{ background: 'linear-gradient(135deg,#14B8A6,#0F766E)' }}
+              >
+                <Activity size={14} className="text-white" />
+              </div>
+              <h2 className="text-sm font-semibold text-slate-800 truncate">
+                {NAV_ITEMS.find(n => n.id === activeTab)?.label || 'Dashboard'}
+              </h2>
+            </button>
           </div>
 
           {/* Right actions */}

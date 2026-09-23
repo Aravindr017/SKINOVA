@@ -4,7 +4,8 @@ import {
   Edit3, Heart, Phone, AlertCircle, Ruler, Weight,
   Droplets, Activity, CheckCircle2, Lock, Sun, ShieldAlert,
   Sparkles, Upload, RefreshCw, Trash2, Award, Download,
-  Check, X, Eye, EyeOff, Smartphone, Key
+  Check, X, Eye, EyeOff, Smartphone, Key,
+  Footprints, Flame, Moon
 } from 'lucide-react';
 import api from '../services/api';
 
