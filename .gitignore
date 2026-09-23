@@ -2,6 +2,18 @@
 # SKINOVA .gitignore
 # ==========================================
 
+# --- Node & Frontend ---
+node_modules/
+*/node_modules/
+dist/
+*/dist/
+.pnp
+.pnp.js
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
 # --- Python & Bytecode ---
 __pycache__/
 *.py[cod]
@@ -10,7 +22,6 @@ __pycache__/
 .Python
 build/
 develop-eggs/
-dist/
 downloads/
 eggs/
 .eggs/
@@ -53,6 +64,7 @@ backend/uploads/*
 !.env.example
 *.pem
 *.key
+*.local
 
 # --- Operating System & IDE Files ---
 .DS_Store
