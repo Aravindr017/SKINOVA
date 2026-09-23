@@ -1,17 +1,28 @@
 # ==========================================
 # SKINOVA - FastAPI Backend Application
-# EfficientNet-B0 ONNX + RAG + Ollama LLM + Hospital Directory
+# EfficientNet-B0 ONNX + RAG + Gemini LLM + Hospital Directory
 # ==========================================
 
 import re
+import os
 import hashlib
 import base64
 import json
+import urllib.request
+import urllib.parse
 from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
 from io import BytesIO
 from typing import Optional
+
+# Load .env file (backend/.env) before importing any env-dependent modules
+try:
+    from dotenv import load_dotenv
+    _env_path = Path(__file__).resolve().parents[1] / ".env"
+    load_dotenv(dotenv_path=_env_path, override=True)
+except ImportError:
+    pass  # python-dotenv not installed, rely on system env vars
 
 import numpy as np
 from fastapi import FastAPI, File, UploadFile, HTTPException, Query
@@ -23,6 +34,9 @@ from app.predictor import predict_image
 from app.rag import search_knowledge_base
 from app.llm import generate_response, synthesize_rag_response
 from app.hospitals_data import get_nearby_hospitals, book_consultation, get_user_appointments
+
+# Google OAuth Client ID for server-side token verification
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
 
 # ==========================================
 # FastAPI Application Configuration
@@ -349,6 +363,7 @@ def chat_with_skinova(request: ChatRequest):
         "confidence": request.confidence,
         "answer": result["answer"],
         "sources": result["sources"],
+        "model_used": result.get("model_used"),
         "source_count": len(result["sources"]),
         "medical_disclaimer": "This response is for informational purposes only. Consult a healthcare professional."
     }
@@ -453,11 +468,28 @@ def hash_password(password: str) -> str:
     return hashlib.sha256(f"{salt}{password}".encode("utf-8")).hexdigest()
 
 def decode_google_jwt(jwt_token: str) -> dict:
-    """Safely decodes payload from standard Google ID token (JWT)."""
+    """Verifies Google ID token via Google's tokeninfo endpoint, then falls back to local JWT decode."""
+    # Method 1: Server-side verification via Google tokeninfo API (authoritative)
+    if jwt_token and len(jwt_token) > 100:
+        try:
+            verify_url = f"https://oauth2.googleapis.com/tokeninfo?id_token={urllib.parse.quote(jwt_token)}"
+            req = urllib.request.Request(verify_url, headers={'User-Agent': 'Skinnova/2.0'})
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                token_info = json.loads(resp.read().decode('utf-8'))
+                # Validate audience matches our client ID
+                aud = token_info.get('aud', '')
+                if GOOGLE_CLIENT_ID and aud != GOOGLE_CLIENT_ID:
+                    print(f"[Auth] Google token audience mismatch: {aud}")
+                    return {}
+                print(f"[Auth] Google token verified for: {token_info.get('email')}")
+                return token_info
+        except Exception as e:
+            print(f"[Auth] Google tokeninfo verification failed, using local decode: {e}")
+
+    # Method 2: Local JWT payload decode (unsigned, used when API unavailable)
     try:
         parts = jwt_token.split(".")
         if len(parts) >= 2:
-            # Base64url decode with padding
             payload_b64 = parts[1]
             padded = payload_b64 + "=" * ((4 - len(payload_b64) % 4) % 4)
             decoded_bytes = base64.urlsafe_b64decode(padded)

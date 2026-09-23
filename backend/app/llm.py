@@ -248,7 +248,18 @@ import os
 import re
 import json
 import requests
+from pathlib import Path
 from app.rag import search_knowledge_base
+
+# Load .env file so Gemini / OpenAI keys are available
+try:
+    from dotenv import load_dotenv
+    _env_path = Path(__file__).resolve().parents[2] / "backend" / ".env"
+    if not _env_path.exists():
+        _env_path = Path(__file__).resolve().parents[1] / ".env"
+    load_dotenv(dotenv_path=_env_path, override=False)
+except ImportError:
+    pass
 
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434/api/chat")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:0.5b")
@@ -283,34 +294,69 @@ def clean_chunk_text(text: str) -> str:
 
 
 def query_gemini_api(prompt: str, context: str, api_key: str) -> str | None:
-    """Queries Google Gemini 1.5 Flash API if key is configured."""
-    try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
-        payload = {
-            "contents": [{
-                "parts": [{
-                    "text": (
-                        "You are SKINOVA, an expert AI dermatological consultant. "
-                        "Provide a compassionate, deeply informative, and clinically accurate response. "
-                        "Reference WHO ICD-11 and DermNet clinical standards. Emphasize that AI screening "
-                        "is not a definitive biopsy diagnosis.\n\n"
-                        f"Medical Context:\n{context}\n\n"
-                        f"User Query:\n{prompt}"
-                    )
-                }]
-            }],
-            "generationConfig": {"temperature": 0.2, "maxOutputTokens": 600}
-        }
-        res = requests.post(url, json=payload, timeout=6)
-        if res.status_code == 200:
-            data = res.json()
-            candidates = data.get("candidates", [])
-            if candidates:
-                parts = candidates[0].get("content", {}).get("parts", [])
-                if parts:
-                    return parts[0].get("text", "").strip()
-    except Exception:
-        pass
+    """Queries Google Gemini API using urllib (stdlib) — avoids Python requests TLS latency.
+    Primary model: gemini-3.5-flash-lite with fallback chain."""
+    import urllib.request as _ureq
+    import urllib.error as _uerr
+
+    GEMINI_MODELS = [
+        "gemini-3.5-flash-lite",
+        "gemini-3.6-flash",
+        "gemini-3.5-flash",
+        "gemini-flash-latest",
+    ]
+    clinical_prompt = (
+        "You are SKINOVA, an expert AI dermatological clinical consultant trained on WHO ICD-11 guidelines "
+        "and DermNet NZ clinical standards.\n\n"
+        "Respond with a compassionate, detailed, and structured clinical consultation that includes:\n"
+        "1. A clear explanation of the condition in patient-friendly language\n"
+        "2. The key diagnostic criteria the patient should be aware of (ABCDE rule if applicable)\n"
+        "3. Practical immediate actions and next clinical steps\n"
+        "4. Urgency of consultation based on risk level\n"
+        "5. Clearly state that AI screening is NOT a definitive diagnosis — biopsy by a licensed dermatologist is always required.\n\n"
+        f"Medical Context from Clinical Knowledge Base:\n{context}\n\n"
+        f"Patient Question:\n{prompt}"
+    )
+    payload_bytes = json.dumps({
+        "contents": [{"parts": [{"text": clinical_prompt}]}],
+        "generationConfig": {"temperature": 0.35, "maxOutputTokens": 700}
+    }).encode("utf-8")
+
+    for model in GEMINI_MODELS:
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+            req = _ureq.Request(
+                url,
+                data=payload_bytes,
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
+            with _ureq.urlopen(req, timeout=25) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                candidates = data.get("candidates", [])
+                if candidates:
+                    parts = candidates[0].get("content", {}).get("parts", [])
+                    for p in parts:
+                        text = p.get("text", "").strip()
+                        if text:
+                            print(f"[Gemini] ✓ Response from {model}")
+                            return text
+        except _uerr.HTTPError as e:
+            body = ""
+            try:
+                body = e.read().decode("utf-8", errors="ignore")[:100]
+            except Exception:
+                pass
+            if e.code in (503, 429):
+                print(f"[Gemini] {model} busy ({e.code}), trying next...")
+            elif e.code in (404, 400):
+                print(f"[Gemini] {model} unavailable ({e.code}), trying next...")
+            else:
+                print(f"[Gemini] {model} HTTP {e.code}: {body}")
+            continue
+        except Exception as e:
+            print(f"[Gemini] {model} error: {type(e).__name__}: {str(e)[:80]}")
+            continue
     return None
 
 
