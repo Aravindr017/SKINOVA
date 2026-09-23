@@ -308,14 +308,19 @@ def query_gemini_api(prompt: str, context: str, api_key: str) -> str | None:
         "gemini-flash-latest",
     ]
     clinical_prompt = (
-        "You are SKINOVA, an expert AI dermatological clinical consultant trained on WHO ICD-11 guidelines "
+        "You are SKINOVA, an empathetic and authoritative AI clinical dermatology consultant trained on WHO ICD-11 guidelines "
         "and DermNet NZ clinical standards.\n\n"
-        "Respond with a compassionate, detailed, and structured clinical consultation that includes:\n"
-        "1. A clear explanation of the condition in patient-friendly language\n"
-        "2. The key diagnostic criteria the patient should be aware of (ABCDE rule if applicable)\n"
-        "3. Practical immediate actions and next clinical steps\n"
-        "4. Urgency of consultation based on risk level\n"
-        "5. Clearly state that AI screening is NOT a definitive diagnosis — biopsy by a licensed dermatologist is always required.\n\n"
+        "Formatting instructions:\n"
+        "- Do NOT use markdown symbols like '###' or '##' in your text.\n"
+        "- Do NOT use horizontal divider lines like '---'.\n"
+        "- Do NOT start with robotic disclaimers like 'SKINOVA AI Consultant' or 'Trained on WHO...'. Start directly and warmly.\n"
+        "- Use clean bullet points (•) and concise, structured paragraphs.\n\n"
+        "Please provide a structured clinical consultation that covers:\n"
+        "1. A clear explanation of the condition in patient-friendly terms\n"
+        "2. Key diagnostic signs and symptoms to observe\n"
+        "3. Practical immediate steps and self-care recommendations\n"
+        "4. Consultation urgency and any red-flag warning signs\n"
+        "5. A reminder that AI screening is not a final biopsy diagnosis.\n\n"
         f"Medical Context from Clinical Knowledge Base:\n{context}\n\n"
         f"Patient Question:\n{prompt}"
     )
@@ -341,6 +346,12 @@ def query_gemini_api(prompt: str, context: str, api_key: str) -> str | None:
                     for p in parts:
                         text = p.get("text", "").strip()
                         if text:
+                            # Clean any leftover markdown headers, dividers, or boilerplate
+                            text = re.sub(r"^\s*---+\s*$", "", text, flags=re.MULTILINE)
+                            text = re.sub(r"^\s*#{1,6}\s*", "", text, flags=re.MULTILINE)
+                            text = re.sub(r"\*\*SKINOVA.*?\*\*\s*", "", text, flags=re.IGNORECASE)
+                            text = re.sub(r"\*Trained on WHO.*?\*\s*", "", text, flags=re.IGNORECASE)
+                            text = re.sub(r"\n{3,}", "\n\n", text).strip()
                             print(f"[Gemini] ✓ Response from {model}")
                             return text
         except _uerr.HTTPError as e:
@@ -434,9 +445,9 @@ def synthesize_rag_response(
     if predicted_class and predicted_class in CLASS_NAMES:
         condition_name = CLASS_NAMES[predicted_class]
         conf_badge = f" (Screened with {confidence:.1%} AI confidence)" if confidence else ""
-        sections.append(f"### 🩺 Clinical Consultation: **{condition_name}**{conf_badge}\n")
+        sections.append(f"🩺 Clinical Consultation: **{condition_name}**{conf_badge}\n")
     else:
-        sections.append(f"### 🩺 Clinical Guidance: **{primary_disease}**\n")
+        sections.append(f"🩺 Clinical Guidance: **{primary_disease}**\n")
 
     # Direct conversational opening answering the specific topic
     if is_diff:

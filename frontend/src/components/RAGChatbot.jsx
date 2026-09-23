@@ -10,6 +10,90 @@ const SUGGESTIONS = [
   'What is eczema and how is it treated?',
 ];
 
+// Renders inline markdown tokens (**bold**, *italic*) into styled elements without raw asterisks
+function formatInlineTokens(str) {
+  if (!str) return '';
+  const parts = [];
+  const regex = /(\*\*.*?\*\*|\*.*?\*)/g;
+  let lastIdx = 0;
+  let match;
+
+  while ((match = regex.exec(str)) !== null) {
+    if (match.index > lastIdx) {
+      parts.push(str.substring(lastIdx, match.index));
+    }
+    const token = match[0];
+    if (token.startsWith('**') && token.endsWith('**')) {
+      parts.push(
+        <strong key={match.index} className="font-semibold text-slate-900">
+          {token.slice(2, -2)}
+        </strong>
+      );
+    } else if (token.startsWith('*') && token.endsWith('*')) {
+      parts.push(
+        <em key={match.index} className="italic text-slate-700">
+          {token.slice(1, -1)}
+        </em>
+      );
+    }
+    lastIdx = regex.lastIndex;
+  }
+  if (lastIdx < str.length) {
+    parts.push(str.substring(lastIdx));
+  }
+  return parts.length > 0 ? parts : str;
+}
+
+// Clean chat message parser that removes raw ###, ---, and renders styled headings, paragraphs, and bullets
+function FormattedChatMessage({ content }) {
+  if (!content) return null;
+
+  // Pre-clean horizontal rules, redundant meta lines, and normalize bullets
+  const cleaned = content
+    .replace(/^---\s*$/gm, '')
+    .replace(/^\s*\*\s+/gm, '• ')
+    .trim();
+
+  const lines = cleaned.split('\n');
+
+  return (
+    <div className="space-y-2 text-sm leading-relaxed text-slate-800">
+      {lines.map((line, idx) => {
+        const trimmed = line.trim();
+        if (!trimmed) return <div key={idx} className="h-1" />;
+
+        // Header check (### or ##)
+        if (trimmed.startsWith('#')) {
+          const headerContent = trimmed.replace(/^#+\s*/, '');
+          return (
+            <h4 key={idx} className="font-bold text-slate-900 text-sm mt-3 mb-1 text-teal-900">
+              {formatInlineTokens(headerContent)}
+            </h4>
+          );
+        }
+
+        // Bullet list item
+        if (trimmed.startsWith('•') || trimmed.startsWith('-')) {
+          const bulletContent = trimmed.replace(/^[•\-]\s*/, '');
+          return (
+            <div key={idx} className="flex items-start gap-2 pl-2">
+              <span className="text-teal-600 font-bold select-none">•</span>
+              <div className="flex-1 text-slate-700">{formatInlineTokens(bulletContent)}</div>
+            </div>
+          );
+        }
+
+        // Standard paragraph
+        return (
+          <p key={idx} className="text-slate-800">
+            {formatInlineTokens(trimmed)}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function RAGChatbot({ currentUser, lastResult }) {
   const [messages, setMessages] = useState([
     {
@@ -149,7 +233,7 @@ export default function RAGChatbot({ currentUser, lastResult }) {
                 <div className={`chat-bubble-ai ${msg.isWarning ? 'border border-amber-200' : ''}`}
                      style={msg.isWarning ? {background:'#FFFBEB'} : {}}>
                   {msg.isWarning && <AlertTriangle size={14} className="text-amber-500 inline mr-1"/>}
-                  <p className="leading-relaxed whitespace-pre-wrap text-sm">{msg.text}</p>
+                  <FormattedChatMessage content={msg.text} />
                   {msg.sources?.length > 0 && (
                     <div className="mt-3 pt-2 border-t" style={{borderColor:'#E2E8F0'}}>
                       <p className="text-xs text-slate-400 font-semibold mb-1.5">📚 Sources:</p>
