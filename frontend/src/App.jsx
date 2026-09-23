@@ -68,7 +68,7 @@ export function App() {
   const [selectedDoctor, setSelectedDoctor]     = useState(null);
 
   // Notifications
-  const [notifCount] = useState(2);
+  const [notifCount, setNotifCount] = useState(2);
 
   // ── Effects ──────────────────────────────────────────────
   useEffect(() => {
@@ -493,7 +493,14 @@ export function App() {
                 <span className="truncate max-w-[120px]">{locationName}</span>
               </div>
             )}
-            <button className="btn btn-icon btn-sm btn-ghost relative">
+            <button
+              className="btn btn-icon btn-sm btn-ghost relative"
+              title="Notifications & Reminders"
+              onClick={() => {
+                setActiveTab('profile');
+                setNotifCount(0);
+              }}
+            >
               <Bell size={18}/>
               {notifCount > 0 && (
                 <span className="absolute top-1 right-1 w-4 h-4 rounded-full text-white text-[10px] font-bold flex items-center justify-center"

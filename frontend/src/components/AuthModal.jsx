@@ -21,17 +21,11 @@ export default function AuthModal({ onLogin, onClose }) {
   const [copiedStep, setCopiedStep]             = useState(null);
   const googleBtnRef                            = useRef(null);
 
-  // Read Google Client ID from environment (if configured by user)
-  const envClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-  const isRealClientIdConfigured = envClientId && !envClientId.includes('sample') && envClientId.length > 20;
+  // Read Google Client ID from environment or user provided client id
+  const envClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '214708130432-6hqa6padbocn27dfj259megu3uvje88v.apps.googleusercontent.com';
 
-  // Initialize official Google Identity Services if a genuine client ID exists
+  // Initialize official Google Identity Services if available
   useEffect(() => {
-    if (!isRealClientIdConfigured) {
-      setHasGsiButton(false);
-      return;
-    }
-
     const handleGoogleCredential = async (response) => {
       setLoading(true);
       setError('');
@@ -74,7 +68,7 @@ export default function AuthModal({ onLogin, onClose }) {
         setHasGsiButton(false);
       }
     }
-  }, [mode, onLogin, envClientId, isRealClientIdConfigured]);
+  }, [mode, onLogin, envClientId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -126,28 +120,83 @@ export default function AuthModal({ onLogin, onClose }) {
     }
   };
 
-  // Single unified Google Sign-In action
-  const handleSingleGoogleLogin = async () => {
-    setLoading(true);
+  // Genuine Google OAuth 2.0 Popup Sign-In
+  const handleGoogleSignIn = () => {
     setError('');
-    try {
-      // Direct authentic Google sign in with session token
-      const userEmail = email && email.includes('@') ? email : 'alex.morgan@gmail.com';
-      const userName  = name.trim() || userEmail.split('@')[0].replace('.', ' ').replace(/\b\w/g, l => l.toUpperCase());
+    setLoading(true);
 
-      const { data } = await api.post('/api/auth/google', {
-        name: userName,
-        email: userEmail,
-        picture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-      });
-      if (data.success && data.user) {
-        onLogin(data.user);
+    const clientId = envClientId;
+
+    // 1. Try Google Identity Services OAuth 2.0 Token Client (Popup)
+    if (window.google?.accounts?.oauth2) {
+      try {
+        const client = window.google.accounts.oauth2.initTokenClient({
+          client_id: clientId,
+          scope: 'email profile openid',
+          callback: async (tokenResponse) => {
+            if (tokenResponse.error) {
+              setLoading(false);
+              if (tokenResponse.error === 'popup_closed_by_user') return;
+              setError(`Google Sign-In Notice: ${tokenResponse.error_description || tokenResponse.error}. Ensure http://localhost:5173 is added to Authorized JavaScript Origins in Google Cloud Console.`);
+              setShowGuide(true);
+              return;
+            }
+
+            if (tokenResponse.access_token) {
+              try {
+                // Fetch real user info directly from Google's userinfo endpoint
+                const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                  headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+                });
+                const profile = await res.json();
+                if (profile.email) {
+                  const { data } = await api.post('/api/auth/google', {
+                    name: profile.name || profile.email.split('@')[0],
+                    email: profile.email,
+                    picture: profile.picture || '',
+                    sub: profile.sub,
+                  });
+                  if (data.success && data.user) {
+                    onLogin(data.user);
+                    return;
+                  }
+                }
+                throw new Error('Could not retrieve Google profile');
+              } catch (err) {
+                setError(err?.message || 'Google authentication failed.');
+              } finally {
+                setLoading(false);
+              }
+            }
+          },
+        });
+        client.requestAccessToken({ prompt: 'select_account' });
+        return;
+      } catch (err) {
+        console.warn('OAuth2 client init error:', err);
       }
-    } catch (err) {
-      setError(err?.message || 'Google sign-in failed. Please use email.');
-    } finally {
-      setLoading(false);
     }
+
+    // 2. Try Google Identity Services Prompt fallback
+    if (window.google?.accounts?.id) {
+      try {
+        window.google.accounts.id.prompt((notification) => {
+          setLoading(false);
+          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+            setError('Google Sign-In prompt could not open. Please ensure http://localhost:5173 is added to Authorized JavaScript Origins in Google Cloud Console.');
+            setShowGuide(true);
+          }
+        });
+        return;
+      } catch (err) {
+        setLoading(false);
+        setError(err?.message || 'Google Sign-In prompt failed.');
+        return;
+      }
+    }
+
+    setLoading(false);
+    setError('Google Identity Services script is loading. Please try again or use email sign in.');
   };
 
   const copyToClipboard = (text, idx) => {
@@ -181,16 +230,19 @@ export default function AuthModal({ onLogin, onClose }) {
         </div>
 
         <div className="p-6 space-y-4">
-          {/* ONLY ONE SINGLE GOOGLE SIGN IN BUTTON */}
-          <div className="space-y-1.5">
-            {hasGsiButton ? (
-              <div ref={googleBtnRef} className="w-full flex justify-center min-h-[44px]" />
-            ) : (
+          {/* OFFICIAL GOOGLE SIGN IN BUTTON */}
+          <div className="space-y-2">
+            <div
+              ref={googleBtnRef}
+              className={`w-full flex justify-center min-h-[44px] ${hasGsiButton ? '' : 'hidden'}`}
+            />
+
+            {!hasGsiButton && (
               <button
                 type="button"
                 className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-xl font-semibold text-xs sm:text-sm transition-all border hover:bg-slate-50 hover:shadow-xs active:scale-[0.99]"
                 style={{ border: '1.5px solid #E2E8F0', color: '#1E293B', background: '#fff' }}
-                onClick={handleSingleGoogleLogin}
+                onClick={handleGoogleSignIn}
                 disabled={loading}
               >
                 <svg width="18" height="18" viewBox="0 0 48 48">

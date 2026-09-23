@@ -1,10 +1,34 @@
-import React, { useRef } from 'react';
-import { X, Download, FileText, Shield, AlertTriangle, Printer } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { X, Download, FileText, Shield, AlertTriangle, Printer, Loader2 } from 'lucide-react';
 
 export default function ReportModal({ result, previewUrl, currentUser, onClose }) {
   const reportRef = useRef();
+  const [downloading, setDownloading] = useState(false);
 
   const handlePrint = () => window.print();
+
+  const handleDownloadPDF = async () => {
+    if (!reportRef.current) return;
+    setDownloading(true);
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const { jsPDF } = await import('jspdf');
+
+      const canvas = await html2canvas(reportRef.current, { scale: 2, useCORS: true });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`SKINOVA_Report_${(result?.prediction || 'Diagnosis').replace(/\s+/g, '_')}.pdf`);
+    } catch (err) {
+      console.error('PDF export failed, falling back to print:', err);
+      window.print();
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const confPct = Math.round((result?.confidence || 0) * 100);
   const date    = new Date().toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' });
@@ -18,6 +42,10 @@ export default function ReportModal({ result, previewUrl, currentUser, onClose }
             <h2 className="font-bold text-slate-900">Skin Analysis Report</h2>
           </div>
           <div className="flex gap-2">
+            <button className="btn btn-sm btn-primary" onClick={handleDownloadPDF} disabled={downloading}>
+              {downloading ? <Loader2 size={14} className="animate-spin"/> : <Download size={14}/>}
+              {downloading ? 'Exporting...' : 'Download PDF'}
+            </button>
             <button className="btn btn-sm btn-secondary" onClick={handlePrint}>
               <Printer size={14}/> Print
             </button>
