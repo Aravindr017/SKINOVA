@@ -16,11 +16,15 @@ from uuid import uuid4
 from io import BytesIO
 from typing import Optional
 
-# Load .env file (backend/.env) before importing any env-dependent modules
+# Load .env file (backend/.env or root .env) before importing any env-dependent modules
 try:
     from dotenv import load_dotenv
-    _env_path = Path(__file__).resolve().parents[1] / ".env"
-    load_dotenv(dotenv_path=_env_path, override=True)
+    _backend_env = Path(__file__).resolve().parents[1] / ".env"
+    _root_env = Path(__file__).resolve().parents[2] / ".env"
+    if _backend_env.exists():
+        load_dotenv(dotenv_path=_backend_env, override=True)
+    if _root_env.exists():
+        load_dotenv(dotenv_path=_root_env, override=False)
 except ImportError:
     pass  # python-dotenv not installed, rely on system env vars
 
@@ -70,7 +74,7 @@ app.add_middleware(
 # File Storage Configuration
 # ==========================================
 
-UPLOAD_DIR = Path("uploads")
+UPLOAD_DIR = Path(__file__).resolve().parents[1] / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
@@ -774,6 +778,11 @@ def get_health_logs(user_id: str, days: int = Query(7, ge=1, le=30)):
         "logs": sorted_logs[:days]
     }
 
+@app.get("/api/health/logs")
+def get_health_logs_query(user_id: str = Query(...), days: int = Query(7, ge=1, le=30)):
+    """Query parameter alias for /api/health/logs/{user_id}."""
+    return get_health_logs(user_id=user_id, days=days)
+
 @app.get("/api/health/summary/{user_id}")
 def get_health_summary(user_id: str):
     logs = HEALTH_LOGS.get(user_id, [])
@@ -798,3 +807,8 @@ def get_health_summary(user_id: str):
             "step_goal_pct": min(100, round(avg_steps / 10000 * 100)),
         }
     }
+
+@app.get("/api/health/summary")
+def get_health_summary_query(user_id: str = Query(...)):
+    """Query parameter alias for /api/health/summary/{user_id}."""
+    return get_health_summary(user_id=user_id)

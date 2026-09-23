@@ -254,10 +254,12 @@ from app.rag import search_knowledge_base
 # Load .env file so Gemini / OpenAI keys are available
 try:
     from dotenv import load_dotenv
-    _env_path = Path(__file__).resolve().parents[2] / "backend" / ".env"
-    if not _env_path.exists():
-        _env_path = Path(__file__).resolve().parents[1] / ".env"
-    load_dotenv(dotenv_path=_env_path, override=False)
+    _backend_env = Path(__file__).resolve().parents[1] / ".env"
+    _root_env = Path(__file__).resolve().parents[2] / ".env"
+    if _backend_env.exists():
+        load_dotenv(dotenv_path=_backend_env, override=True)
+    if _root_env.exists():
+        load_dotenv(dotenv_path=_root_env, override=False)
 except ImportError:
     pass
 
@@ -585,16 +587,16 @@ def generate_response(
 
     # --------------------------------------
     # 2. Try Gemini API if key is available
-    # --------------------------------------
-    if GEMINI_API_KEY:
-        gemini_ans = query_gemini_api(query, context, GEMINI_API_KEY)
+    active_gemini_key = os.environ.get("GEMINI_API_KEY", "") or GEMINI_API_KEY
+    if active_gemini_key:
+        gemini_ans = query_gemini_api(query, context, active_gemini_key)
         if gemini_ans:
             return {
                 "answer": gemini_ans,
                 "sources": rag_results,
                 "predicted_class": predicted_class,
                 "confidence": confidence,
-                "model_used": "google-gemini-1.5-flash",
+                "model_used": "google-gemini-3.5-flash-lite",
             }
 
     # --------------------------------------

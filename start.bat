@@ -24,6 +24,20 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
+REM 2.5 Check and Initialize Environment Files (.env)
+if not exist "backend\.env" (
+    if exist "backend\.env.example" (
+        echo Initializing backend\.env from backend\.env.example...
+        copy "backend\.env.example" "backend\.env" >nul
+    )
+)
+if not exist "frontend\.env" (
+    if exist "frontend\.env.example" (
+        echo Initializing frontend\.env from frontend\.env.example...
+        copy "frontend\.env.example" "frontend\.env" >nul
+    )
+)
+
 REM 3. Python Virtual Environment
 if not exist "backend\.venv" (
     echo Creating virtual environment in backend\.venv...

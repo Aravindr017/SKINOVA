@@ -38,6 +38,16 @@ fi
 
 echo -e "${GREEN}✓ Environment checked:${NC} $(python3 --version), Node $(node --version)"
 
+# 2.5 Check and Initialize Environment Files (.env)
+if [ ! -f "$BACKEND_DIR/.env" ] && [ -f "$BACKEND_DIR/.env.example" ]; then
+    echo -e "${YELLOW}Notice: backend/.env not found, creating from .env.example...${NC}"
+    cp "$BACKEND_DIR/.env.example" "$BACKEND_DIR/.env"
+fi
+if [ ! -f "$FRONTEND_DIR/.env" ] && [ -f "$FRONTEND_DIR/.env.example" ]; then
+    echo -e "${YELLOW}Notice: frontend/.env not found, creating from .env.example...${NC}"
+    cp "$FRONTEND_DIR/.env.example" "$FRONTEND_DIR/.env"
+fi
+
 # 3. Setup Python Virtual Environment
 VENV_DIR="$BACKEND_DIR/.venv"
 if [ ! -d "$VENV_DIR" ]; then
