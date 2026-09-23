@@ -42,8 +42,7 @@
 - **Live OpenStreetMap Overpass**: Dynamically retrieves live nearby hospitals, clinics, and dermatologists within a 15–25 km radius.
 - **Proximity-First Risk Triage**: High-risk lesions (e.g. Melanoma) prioritize local cutaneous oncology and Mohs surgery centers (e.g., Regional Cancer Centre Trivandrum at 0.88 km) without routing patients hundreds of kilometers away.
 
-### 4. 🏃 Genuine Health & Fit Activity Tracker
-- **100% Genuine Metrics**: Zero synthetic or randomized numbers. Ring charts remain cleanly at 0 until actual data is entered or synchronized.
+### 4. 🏃 Health & Fit Activity Tracker
 - **Mobile Integration**:
   - **Phone Screen Sync**: Quick-input modal to enter steps, active calories, water intake, heart rate, and sleep directly from Apple Health (iOS) or Google Fit (Android).
   - **File Importer**: Direct XML/JSON export ingestion from Apple Health and Google Takeout.
@@ -158,8 +157,6 @@ start.bat
 
 *The startup script will automatically check Python & Node.js, create the Python virtual environment in `backend/.venv`, install requirements, install npm packages in `frontend/`, and launch both servers simultaneously!*
 
-- **Web App**: [http://localhost:5173](http://localhost:5173)
-- **API Swagger Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
 
 ---
 
