@@ -4,7 +4,8 @@ import {
   History, User, Heart, LayoutDashboard, ChevronRight, Bell,
   LogOut, Menu, X, Footprints, Flame, Droplets, Moon, Dumbbell,
   TrendingUp, CheckCircle2, AlertTriangle, Info, ChevronLeft,
-  Settings, FileText, Shield
+  Settings, FileText, Shield, Wifi, WifiOff, Search, ArrowRight,
+  Clock
 } from 'lucide-react';
 
 import AuthModal from './components/AuthModal';
@@ -36,6 +37,9 @@ export function App() {
   const [activeTab, setActiveTab]   = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // Live Internet Connectivity (Online / Offline)
+  const [isOnline, setIsOnline] = useState(() => (typeof navigator !== 'undefined' ? navigator.onLine : true));
+
   // Location - defaults to Thiruvananthapuram, Kerala until live GPS updates
   const [userLocation, setUserLocation]         = useState({ lat: 8.5241, lon: 76.9366, lng: 76.9366 });
   const [locationName, setLocationName]         = useState('Thiruvananthapuram, Kerala');
@@ -53,12 +57,39 @@ export function App() {
   const [isScanning, setIsScanning]       = useState(false);
   const [scanError, setScanError]         = useState(null);
 
-  // Appointments & history (localStorage)
+  // Query handoff between Search History and Chat / Hospital Finder
+  const [activeChatQuery, setActiveChatQuery]       = useState('');
+  const [activeHospitalQuery, setActiveHospitalQuery] = useState('');
+
+  // User-Isolated State: Scans, Searches, Appointments
   const [bookedAppointments, setBookedAppointments] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('skinova_appointments')) || []; } catch { return []; }
+    try {
+      const user = JSON.parse(localStorage.getItem('skinova_user'));
+      if (user?.id) {
+        return JSON.parse(localStorage.getItem(`skinova_appointments_${user.id}`)) || [];
+      }
+      return JSON.parse(localStorage.getItem('skinova_appointments')) || [];
+    } catch { return []; }
   });
+
   const [scanHistory, setScanHistory] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('skinova_scans')) || []; } catch { return []; }
+    try {
+      const user = JSON.parse(localStorage.getItem('skinova_user'));
+      if (user?.id) {
+        return JSON.parse(localStorage.getItem(`skinova_scans_${user.id}`)) || [];
+      }
+      return JSON.parse(localStorage.getItem('skinova_scans')) || [];
+    } catch { return []; }
+  });
+
+  const [searchHistory, setSearchHistory] = useState(() => {
+    try {
+      const user = JSON.parse(localStorage.getItem('skinova_user'));
+      if (user?.id) {
+        return JSON.parse(localStorage.getItem(`skinova_searches_${user.id}`)) || [];
+      }
+      return JSON.parse(localStorage.getItem('skinova_searches')) || [];
+    } catch { return []; }
   });
 
   // Modals
@@ -69,6 +100,81 @@ export function App() {
 
   // Notifications
   const [notifCount, setNotifCount] = useState(2);
+
+  // ── Network Connectivity Listener (Live Online / Offline) ──────
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    const interval = setInterval(() => {
+      if (typeof navigator !== 'undefined') {
+        setIsOnline(navigator.onLine);
+      }
+    }, 4000);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      clearInterval(interval);
+    };
+  }, []);
+
+  // ── User Data Isolation Effect (Sync on Login / Logout) ───────
+  useEffect(() => {
+    if (currentUser?.id) {
+      // 1. Load User Scans
+      const userScans = localStorage.getItem(`skinova_scans_${currentUser.id}`);
+      if (userScans) {
+        try { setScanHistory(JSON.parse(userScans)); } catch { setScanHistory([]); }
+      } else {
+        const legacy = localStorage.getItem('skinova_scans');
+        if (legacy) {
+          try {
+            const parsed = JSON.parse(legacy);
+            const userOnly = parsed.filter(s => !s.userId || s.userId === currentUser.id);
+            setScanHistory(userOnly);
+            localStorage.setItem(`skinova_scans_${currentUser.id}`, JSON.stringify(userOnly));
+          } catch { setScanHistory([]); }
+        } else {
+          setScanHistory([]);
+        }
+      }
+
+      // 2. Load User Searches
+      const userSearches = localStorage.getItem(`skinova_searches_${currentUser.id}`);
+      if (userSearches) {
+        try { setSearchHistory(JSON.parse(userSearches)); } catch { setSearchHistory([]); }
+      } else {
+        setSearchHistory([]);
+      }
+
+      // 3. Load User Appointments
+      const userAppts = localStorage.getItem(`skinova_appointments_${currentUser.id}`);
+      if (userAppts) {
+        try { setBookedAppointments(JSON.parse(userAppts)); } catch { setBookedAppointments([]); }
+      } else {
+        const legacyAppts = localStorage.getItem('skinova_appointments');
+        if (legacyAppts) {
+          try {
+            const parsed = JSON.parse(legacyAppts);
+            const userOnly = parsed.filter(a => !a.userId || a.userId === currentUser.id);
+            setBookedAppointments(userOnly);
+            localStorage.setItem(`skinova_appointments_${currentUser.id}`, JSON.stringify(userOnly));
+          } catch { setBookedAppointments([]); }
+        } else {
+          setBookedAppointments([]);
+        }
+      }
+    } else {
+      // Clean slate when signed out for security and privacy
+      setScanHistory([]);
+      setSearchHistory([]);
+      setBookedAppointments([]);
+    }
+  }, [currentUser?.id]);
 
   // ── Effects ──────────────────────────────────────────────
   useEffect(() => {
@@ -86,34 +192,83 @@ export function App() {
     }).catch(() => setLocationName('Your location'));
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem('skinova_appointments', JSON.stringify(bookedAppointments));
-  }, [bookedAppointments]);
+  // ── Search & Consultation History Tracking ────────────────
+  const handleRecordSearch = useCallback((query, type = 'ai_consultation', metadata = {}) => {
+    if (!query || !query.trim()) return;
+    const searchEntry = {
+      id: Date.now(),
+      query: query.trim(),
+      type, // 'ai_consultation' | 'hospital_search'
+      date: new Date().toISOString(),
+      userId: currentUser?.id || 'guest',
+      userEmail: currentUser?.email || 'guest',
+      ...metadata,
+    };
+    setSearchHistory(prev => {
+      const filtered = prev.filter(s => !(s.query.toLowerCase() === query.trim().toLowerCase() && s.type === type));
+      const updated = [searchEntry, ...filtered].slice(0, 50);
+      if (currentUser?.id) {
+        localStorage.setItem(`skinova_searches_${currentUser.id}`, JSON.stringify(updated));
+      } else {
+        localStorage.setItem('skinova_searches_guest', JSON.stringify(updated));
+      }
+      return updated;
+    });
+  }, [currentUser]);
 
-  useEffect(() => {
-    localStorage.setItem('skinova_scans', JSON.stringify(scanHistory));
-  }, [scanHistory]);
+  const handleClearSearches = useCallback(() => {
+    setSearchHistory([]);
+    if (currentUser?.id) {
+      localStorage.removeItem(`skinova_searches_${currentUser.id}`);
+    } else {
+      localStorage.removeItem('skinova_searches_guest');
+    }
+  }, [currentUser]);
 
-  // ── Handlers ──────────────────────────────────────────────
+  const handleDeleteSearch = useCallback((searchId) => {
+    setSearchHistory(prev => {
+      const updated = prev.filter(s => s.id !== searchId);
+      if (currentUser?.id) {
+        localStorage.setItem(`skinova_searches_${currentUser.id}`, JSON.stringify(updated));
+      } else {
+        localStorage.setItem('skinova_searches_guest', JSON.stringify(updated));
+      }
+      return updated;
+    });
+  }, [currentUser]);
+
+  const handleSelectSearchQuery = useCallback((query, type) => {
+    if (type === 'hospital_search') {
+      setActiveHospitalQuery(query);
+      setActiveTab('hospitals');
+    } else {
+      setActiveChatQuery(query);
+      setActiveTab('chat');
+    }
+  }, []);
+
+  // ── Scans Handlers ────────────────────────────────────────
   const handleClearScans = useCallback(async () => {
     setScanHistory([]);
-    localStorage.removeItem('skinova_scans');
-    if (currentUser) {
+    if (currentUser?.id) {
       localStorage.removeItem(`skinova_scans_${currentUser.id}`);
       try {
         await api.post('/api/scans/clear', { user_id: currentUser.id });
       } catch (err) {
         console.warn('Scans clear API error:', err);
       }
+    } else {
+      localStorage.removeItem('skinova_scans_guest');
     }
   }, [currentUser]);
 
   const handleDeleteScan = useCallback((scanId) => {
     setScanHistory(prev => {
       const updated = prev.filter(s => s.id !== scanId);
-      localStorage.setItem('skinova_scans', JSON.stringify(updated));
-      if (currentUser) {
+      if (currentUser?.id) {
         localStorage.setItem(`skinova_scans_${currentUser.id}`, JSON.stringify(updated));
+      } else {
+        localStorage.setItem('skinova_scans_guest', JSON.stringify(updated));
       }
       return updated;
     });
@@ -128,6 +283,10 @@ export function App() {
   const handleLogout = useCallback(() => {
     setCurrentUser(null);
     localStorage.removeItem('skinova_user');
+    setScanHistory([]);
+    setSearchHistory([]);
+    setBookedAppointments([]);
+    setDiagnosisResult(null);
   }, []);
 
   const handleFileSelect = useCallback((file, url) => {
@@ -167,16 +326,24 @@ export function App() {
         risk_level: normalized.risk_level,
         predicted_class: data.predicted_class,
         previewUrl,
-        userId: currentUser.id
+        userId: currentUser.id,
+        userEmail: currentUser.email,
       };
-      setScanHistory(h => [entry, ...h].slice(0, 50));
-      localStorage.setItem(`skinova_scans_${currentUser.id}`, JSON.stringify([entry, ...scanHistory].slice(0, 20)));
+      setScanHistory(h => {
+        const updated = [entry, ...h.filter(s => s.id !== entry.id)].slice(0, 50);
+        if (currentUser?.id) {
+          localStorage.setItem(`skinova_scans_${currentUser.id}`, JSON.stringify(updated));
+        } else {
+          localStorage.setItem('skinova_scans_guest', JSON.stringify(updated));
+        }
+        return updated;
+      });
     } catch (err) {
       setScanError(err?.message || 'Scan failed. Please try again.');
     } finally {
       setIsScanning(false);
     }
-  }, [selectedFile, currentUser, previewUrl, scanHistory]);
+  }, [selectedFile, currentUser, previewUrl]);
 
   const handleBookAppointment = useCallback((hospital, doctor) => {
     setSelectedHospital(hospital);
@@ -194,6 +361,23 @@ export function App() {
   // ── Dashboard ──────────────────────────────────────────────
   const DashboardView = () => (
     <div className="space-y-5 sm:space-y-6 animate-fade-up">
+      {/* Offline Alert Banner */}
+      {!isOnline && (
+        <div className="card p-3 sm:p-4 border-amber-300 bg-amber-50 flex items-center justify-between gap-3 text-amber-800 animate-pulse">
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex h-2.5 w-2.5 flex-shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500" />
+            </span>
+            <div>
+              <p className="text-xs sm:text-sm font-semibold text-amber-900">Offline Mode Active</p>
+              <p className="text-[11px] sm:text-xs text-amber-700">You are browsing offline. Cached scans, reports, and search histories remain accessible.</p>
+            </div>
+          </div>
+          <span className="badge text-[10px] bg-amber-200 text-amber-900 font-bold uppercase tracking-wider flex-shrink-0">Offline</span>
+        </div>
+      )}
+
       {/* Hero */}
       <div className="card p-4 sm:p-6 overflow-hidden relative"
            style={{background: 'linear-gradient(135deg, #0D9488 0%, #0891B2 100%)'}}>
@@ -230,7 +414,7 @@ export function App() {
         {[
           { label: 'Scans Done',     value: scanHistory.length,        icon: Camera,    color: '#0D9488', bg: '#F0FDFA' },
           { label: 'Appointments',   value: bookedAppointments.length, icon: Building2, color: '#0284C7', bg: '#F0F9FF' },
-          { label: 'AI Consults',    value: 0,                         icon: MessageSquare, color: '#7C3AED', bg: '#F5F3FF' },
+          { label: 'AI Consults',    value: searchHistory.length,      icon: MessageSquare, color: '#7C3AED', bg: '#F5F3FF' },
           { label: 'Reports Saved',  value: scanHistory.length,        icon: FileText,  color: '#D97706', bg: '#FFFBEB' },
         ].map((stat, i) => (
           <div key={stat.label} className={`stat-card animate-fade-up delay-${(i+1)*100}`}>
@@ -516,6 +700,30 @@ export function App() {
 
           {/* Right actions */}
           <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+            {/* Live Network Online / Offline Status Indicator */}
+            <div
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold cursor-default transition-all shadow-xs ${
+                isOnline
+                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                  : 'bg-rose-50 text-rose-800 border border-rose-200 animate-pulse'
+              }`}
+              title={isOnline ? 'Connected to Internet (Online)' : 'No Internet Connection (Offline Mode Active)'}
+            >
+              <span className="relative flex h-2 w-2 flex-shrink-0">
+                {isOnline && (
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                )}
+                <span
+                  className={`relative inline-flex rounded-full h-2 w-2 ${
+                    isOnline ? 'bg-emerald-500' : 'bg-rose-500'
+                  }`}
+                />
+              </span>
+              <span className="text-[11px] font-semibold select-none hidden min-[360px]:inline">
+                {isOnline ? 'Online' : 'Offline'}
+              </span>
+            </div>
+
             {locationName && (
               <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-500 px-3 py-1.5 rounded-full"
                    style={{background:'#F1F5F9'}}>
@@ -561,7 +769,14 @@ export function App() {
           <div className="max-w-4xl mx-auto p-3.5 sm:p-6">
             {activeTab === 'dashboard' && <DashboardView />}
             {activeTab === 'scan'      && <ScanView />}
-            {activeTab === 'chat'      && <RAGChatbot currentUser={currentUser} lastResult={diagnosisResult} />}
+            {activeTab === 'chat'      && (
+              <RAGChatbot
+                currentUser={currentUser}
+                lastResult={diagnosisResult}
+                onRecordSearch={handleRecordSearch}
+                initialQuery={activeChatQuery}
+              />
+            )}
             {activeTab === 'hospitals' && (
               <HospitalFinder
                 userLocation={userLocation}
@@ -569,6 +784,8 @@ export function App() {
                 onBookAppointment={handleBookAppointment}
                 currentUser={currentUser}
                 onLoginRequest={() => setAuthModalOpen(true)}
+                onRecordSearch={handleRecordSearch}
+                initialSearchTerm={activeHospitalQuery}
               />
             )}
             {activeTab === 'health'    && (
@@ -578,9 +795,13 @@ export function App() {
               <UserHistory
                 scanHistory={scanHistory}
                 appointments={bookedAppointments}
+                searchHistory={searchHistory}
                 currentUser={currentUser}
                 onClearScans={handleClearScans}
                 onDeleteScan={handleDeleteScan}
+                onClearSearches={handleClearSearches}
+                onDeleteSearch={handleDeleteSearch}
+                onSelectSearchQuery={handleSelectSearchQuery}
               />
             )}
             {activeTab === 'profile'   && (

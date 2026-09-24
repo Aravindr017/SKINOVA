@@ -94,7 +94,7 @@ function FormattedChatMessage({ content }) {
   );
 }
 
-export default function RAGChatbot({ currentUser, lastResult }) {
+export default function RAGChatbot({ currentUser, lastResult, onRecordSearch, initialQuery = '' }) {
   const [messages, setMessages] = useState([
     {
       id: 1, role: 'ai',
@@ -102,11 +102,17 @@ export default function RAGChatbot({ currentUser, lastResult }) {
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
-  const [input, setInput]     = useState('');
+  const [input, setInput]     = useState(initialQuery || '');
   const [loading, setLoading] = useState(false);
   const [blocked, setBlocked] = useState(false);
   const bottomRef = useRef();
   const inputRef  = useRef();
+
+  useEffect(() => {
+    if (initialQuery) {
+      setInput(initialQuery);
+    }
+  }, [initialQuery]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -128,6 +134,9 @@ export default function RAGChatbot({ currentUser, lastResult }) {
       ]);
       return;
     }
+
+    // Record user search/consultation history
+    onRecordSearch?.(q, 'ai_consultation');
 
     const userMsg = { id: Date.now(), role: 'user', text: q, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
     setMessages(prev => [...prev, userMsg]);

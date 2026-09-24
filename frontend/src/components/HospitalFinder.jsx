@@ -23,7 +23,9 @@ export default function HospitalFinder({
   locationName: initialLocationName,
   onBookAppointment,
   currentUser,
-  onLoginRequest
+  onLoginRequest,
+  onRecordSearch,
+  initialSearchTerm = '',
 }) {
   const [userLocation, setUserLocation] = useState(
     initialLocation || { lat: 8.5241, lon: 76.9366, lng: 76.9366 }
@@ -34,10 +36,16 @@ export default function HospitalFinder({
   const [hospitals, setHospitals]       = useState([]);
   const [loading, setLoading]           = useState(false);
   const [locating, setLocating]         = useState(false);
-  const [searchTerm, setSearchTerm]     = useState('');
+  const [searchTerm, setSearchTerm]     = useState(initialSearchTerm || '');
   const [specialty, setSpecialty]       = useState('');
   const [sortBy, setSortBy]             = useState('distance');
   const [selected, setSelected]         = useState(null);
+
+  useEffect(() => {
+    if (initialSearchTerm) {
+      setSearchTerm(initialSearchTerm);
+    }
+  }, [initialSearchTerm]);
 
   // City Picker Dropdown / Modal state
   const [showCityPicker, setShowCityPicker] = useState(false);
@@ -270,6 +278,16 @@ export default function HospitalFinder({
             placeholder="Search by clinic name, doctor, or landmark…"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && searchTerm.trim()) {
+                onRecordSearch?.(searchTerm.trim(), 'hospital_search', { location: locationName });
+              }
+            }}
+            onBlur={() => {
+              if (searchTerm.trim().length >= 3) {
+                onRecordSearch?.(searchTerm.trim(), 'hospital_search', { location: locationName });
+              }
+            }}
           />
         </div>
         <div className="flex flex-col sm:flex-row gap-2.5">

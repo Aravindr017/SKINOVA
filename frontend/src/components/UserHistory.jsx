@@ -1,9 +1,24 @@
 import React, { useState } from 'react';
-import { History, Calendar, Clock, CheckCircle2, AlertTriangle, XCircle, Camera, ChevronRight, Trash2, ShieldAlert, Sparkles } from 'lucide-react';
+import {
+  History, Calendar, Clock, CheckCircle2, AlertTriangle, XCircle,
+  Camera, ChevronRight, Trash2, ShieldAlert, Sparkles, Search,
+  MessageSquare, Building2, MapPin, ArrowRight
+} from 'lucide-react';
 
-export default function UserHistory({ scanHistory = [], appointments = [], currentUser, onClearScans, onDeleteScan }) {
-  const [tab, setTab] = useState('scans');
+export default function UserHistory({
+  scanHistory = [],
+  appointments = [],
+  searchHistory = [],
+  currentUser,
+  onClearScans,
+  onDeleteScan,
+  onClearSearches,
+  onDeleteSearch,
+  onSelectSearchQuery,
+}) {
+  const [tab, setTab] = useState('scans'); // 'scans' | 'searches' | 'appointments'
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [clearTarget, setClearTarget] = useState(null); // 'scans' | 'searches'
 
   const RISK_BADGE = {
     low:      'badge-success',
@@ -17,25 +32,55 @@ export default function UserHistory({ scanHistory = [], appointments = [], curre
     cancelled: { cls: 'badge-danger',  label: 'Cancelled', icon: XCircle },
   };
 
+  const triggerClear = (target) => {
+    setClearTarget(target);
+    setShowClearConfirm(true);
+  };
+
   const handleConfirmClear = () => {
-    onClearScans?.();
+    if (clearTarget === 'scans') {
+      onClearScans?.();
+    } else if (clearTarget === 'searches') {
+      onClearSearches?.();
+    }
     setShowClearConfirm(false);
+    setClearTarget(null);
   };
 
   return (
     <div className="space-y-5 animate-fade-up">
+      {/* Title & Clear Action */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg sm:text-xl font-bold text-slate-900" style={{ fontFamily: 'Outfit,sans-serif' }}>My Health Records</h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Your scan history and doctor appointment records</p>
+          <h1 className="text-lg sm:text-xl font-bold text-slate-900" style={{ fontFamily: 'Outfit,sans-serif' }}>
+            My Health & Activity Records
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+            {currentUser
+              ? `Account records for ${currentUser.name || currentUser.email}`
+              : 'Sign in to access your saved medical scans and consultation history'}
+          </p>
         </div>
-        {currentUser && tab === 'scans' && scanHistory.length > 0 && (
-          <button
-            className="btn btn-sm btn-ghost text-red-600 hover:bg-red-50 flex items-center gap-1.5 self-start sm:self-auto text-xs"
-            onClick={() => setShowClearConfirm(true)}
-          >
-            <Trash2 size={13} /> Clear All Scans
-          </button>
+
+        {currentUser && (
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            {tab === 'scans' && scanHistory.length > 0 && (
+              <button
+                className="btn btn-sm btn-ghost text-red-600 hover:bg-red-50 flex items-center gap-1.5 text-xs"
+                onClick={() => triggerClear('scans')}
+              >
+                <Trash2 size={13} /> Clear Scans
+              </button>
+            )}
+            {tab === 'searches' && searchHistory.length > 0 && (
+              <button
+                className="btn btn-sm btn-ghost text-red-600 hover:bg-red-50 flex items-center gap-1.5 text-xs"
+                onClick={() => triggerClear('searches')}
+              >
+                <Trash2 size={13} /> Clear Searches
+              </button>
+            )}
+          </div>
         )}
       </div>
 
@@ -47,9 +92,13 @@ export default function UserHistory({ scanHistory = [], appointments = [], curre
               <Trash2 size={24} />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900">Clear Scan History?</h3>
+              <h3 className="text-base font-bold text-slate-900">
+                {clearTarget === 'scans' ? 'Clear Scan History?' : 'Clear Search & Query History?'}
+              </h3>
               <p className="text-xs text-slate-500 mt-1">
-                Are you sure you want to clear all {scanHistory.length} scan records? This action cannot be undone.
+                {clearTarget === 'scans'
+                  ? `Are you sure you want to clear all ${scanHistory.length} skin scan records? This action cannot be undone.`
+                  : `Are you sure you want to clear all ${searchHistory.length} consultation & search records?`}
               </p>
             </div>
             <div className="flex gap-2">
@@ -72,21 +121,35 @@ export default function UserHistory({ scanHistory = [], appointments = [], curre
         <div className="card p-8 text-center">
           <History size={32} className="text-slate-300 mx-auto mb-3"/>
           <p className="text-slate-600 font-semibold mb-1">Sign In Required</p>
-          <p className="text-slate-500 text-sm">Please sign in to view and manage your saved health history.</p>
+          <p className="text-slate-500 text-sm">Please sign in to track and view your personalized health records and search history.</p>
         </div>
       )}
 
       {currentUser && (
         <>
+          {/* Navigation Tabs (3 Tabs) */}
           <div className="tab-nav">
-            <button className={`tab-btn ${tab === 'scans' ? 'active' : ''}`} onClick={() => setTab('scans')}>
+            <button
+              className={`tab-btn ${tab === 'scans' ? 'active' : ''}`}
+              onClick={() => setTab('scans')}
+            >
               <Camera size={14}/> Skin Scans ({scanHistory.length})
             </button>
-            <button className={`tab-btn ${tab === 'appointments' ? 'active' : ''}`} onClick={() => setTab('appointments')}>
+            <button
+              className={`tab-btn ${tab === 'searches' ? 'active' : ''}`}
+              onClick={() => setTab('searches')}
+            >
+              <Search size={14}/> Search & Queries ({searchHistory.length})
+            </button>
+            <button
+              className={`tab-btn ${tab === 'appointments' ? 'active' : ''}`}
+              onClick={() => setTab('appointments')}
+            >
               <Calendar size={14}/> Appointments ({appointments.length})
             </button>
           </div>
 
+          {/* 1. SCANS TAB */}
           {tab === 'scans' && (
             <div className="space-y-3">
               {scanHistory.length === 0 ? (
@@ -96,7 +159,7 @@ export default function UserHistory({ scanHistory = [], appointments = [], curre
                   </div>
                   <h3 className="font-bold text-slate-800">No Scan Results Recorded</h3>
                   <p className="text-slate-500 text-xs max-w-sm mx-auto">
-                    Your history is clean. Upload a skin image under the AI Skin Scan tab to generate a clinical diagnosis.
+                    Your account has no saved scans yet. Upload a skin image under the AI Skin Scan tab to generate a clinical diagnosis.
                   </p>
                 </div>
               ) : (
@@ -143,6 +206,87 @@ export default function UserHistory({ scanHistory = [], appointments = [], curre
             </div>
           )}
 
+          {/* 2. SEARCH & CONSULTATION HISTORY TAB */}
+          {tab === 'searches' && (
+            <div className="space-y-3">
+              {searchHistory.length === 0 ? (
+                <div className="card p-8 text-center space-y-2">
+                  <div className="w-12 h-12 rounded-2xl bg-teal-50 flex items-center justify-center mx-auto text-teal-600">
+                    <Search size={24}/>
+                  </div>
+                  <h3 className="font-bold text-slate-800">No Search History Recorded</h3>
+                  <p className="text-slate-500 text-xs max-w-sm mx-auto">
+                    When you ask questions in the AI Consultant or search for dermatologists & clinics, your queries will be saved here under your Google account.
+                  </p>
+                </div>
+              ) : (
+                searchHistory.map(item => (
+                  <div key={item.id} className="card p-3.5 sm:p-4 flex items-center justify-between gap-3 card-interactive group">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div
+                        className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                        style={{
+                          background: item.type === 'hospital_search' ? '#F0F9FF' : '#F0FDFA',
+                          color: item.type === 'hospital_search' ? '#0284C7' : '#0D9488',
+                        }}
+                      >
+                        {item.type === 'hospital_search' ? <Building2 size={18}/> : <MessageSquare size={18}/>}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-semibold text-slate-900 truncate">
+                            {item.query}
+                          </p>
+                          <span
+                            className="badge text-[10px] py-0.5"
+                            style={{
+                              background: item.type === 'hospital_search' ? '#E0F2FE' : '#CCFBF1',
+                              color: item.type === 'hospital_search' ? '#0369A1' : '#0F766E',
+                            }}
+                          >
+                            {item.type === 'hospital_search' ? 'Clinic Search' : 'AI Consultation'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
+                          <Clock size={11} className="flex-shrink-0"/>
+                          {new Date(item.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          {item.location && <span>· 📍 {item.location}</span>}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {onSelectSearchQuery && (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-ghost text-xs text-teal-700 hover:bg-teal-50 flex items-center gap-1"
+                          onClick={() => onSelectSearchQuery(item)}
+                          title="Ask or search again"
+                        >
+                          <span>Ask Again</span>
+                          <ArrowRight size={12}/>
+                        </button>
+                      )}
+
+                      {onDeleteSearch && (
+                        <button
+                          type="button"
+                          className="btn btn-icon btn-sm btn-ghost text-slate-400 hover:text-red-600 opacity-60 group-hover:opacity-100 transition-opacity"
+                          title="Delete from history"
+                          onClick={() => onDeleteSearch(item.id)}
+                        >
+                          <Trash2 size={14}/>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* 3. APPOINTMENTS TAB */}
           {tab === 'appointments' && (
             <div className="space-y-3">
               {appointments.length === 0 ? (
@@ -152,7 +296,7 @@ export default function UserHistory({ scanHistory = [], appointments = [], curre
                   </div>
                   <h3 className="font-bold text-slate-800">No Appointments Scheduled</h3>
                   <p className="text-slate-500 text-xs max-w-sm mx-auto">
-                    You have no active doctor consultations. Find a nearby clinic to book an appointment.
+                    You have no active doctor consultations scheduled. Find a nearby clinic to book an appointment.
                   </p>
                 </div>
               ) : (
