@@ -3,7 +3,7 @@
 // 100% Offline Loading • Instant Cache Eviction • Zero CDN Reliance
 // ==========================================
 
-const CACHE_NAME = 'skinova-pwa-v4';
+const CACHE_NAME = 'skinova-pwa-v5';
 
 // Essential assets to cache immediately upon installation for 100% offline usage
 const PRECACHE_ASSETS = [
@@ -14,10 +14,11 @@ const PRECACHE_ASSETS = [
   '/icon-512.png',
   '/favicon.ico',
   '/data/clinicalKnowledge.json',
-  '/models/skinova_efficientnetb0_int8.onnx',
+  '/models/skinova_efficientnetb0.onnx',
   '/wasm/ort-wasm-simd-threaded.wasm',
   '/wasm/ort-wasm-simd-threaded.mjs'
 ];
+
 
 
 // 1. Install Event: Cache assets and immediately activate

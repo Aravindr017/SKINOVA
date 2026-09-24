@@ -75,7 +75,7 @@ export async function getOfflineSession() {
   sessionLoadingPromise = (async () => {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const localWasmPath = origin ? `${origin}/wasm/` : '/wasm/';
-    const modelUrl = '/models/skinova_efficientnetb0_int8.onnx';
+    const modelUrl = '/models/skinova_efficientnetb0.onnx';
 
     // Configure WebAssembly execution: Single-threaded SIMD (best browser compatibility, zero worker pthread overhead)
     ort.env.wasm.numThreads = 1;
@@ -248,7 +248,7 @@ export async function predictOffline(imageSource) {
     urgency: topMeta.urgency || 'Standard consultation',
     description: topMeta.description || '',
     all_probabilities,
-    model_version: `EfficientNet-B0 INT8 (On-Device WASM • ${inferenceMs}ms)`,
+    model_version: `EfficientNet-B0 (On-Device WASM • ${inferenceMs}ms)`,
     medical_disclaimer: 'Offline on-device AI screening. Processed 100% locally on your device with no data transmitted over the internet.',
   };
 }
