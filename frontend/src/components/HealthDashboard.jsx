@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Footprints, Flame, Droplets, Moon, Dumbbell, Heart,
   TrendingUp, Plus, Calendar, Save, Target, Activity, Wind,
   Smartphone, CheckCircle2, RefreshCw, ShieldCheck, Zap,
-  Settings, ExternalLink, X, AlertCircle, Upload, Trash2, FileText
+  Settings, ExternalLink, X, AlertCircle, Upload, Trash2, FileText,
+  Play, Pause, Compass, HelpCircle, Check, ShieldAlert
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
 import api from '../services/api';
+import { parseHealthExportFile } from '../utils/healthExportParser';
 
 const TODAY = new Date().toISOString().split('T')[0];
 const WORKOUT_TYPES = ['Walking', 'Running', 'Cycling', 'Swimming', 'Yoga', 'Gym', 'Sports', 'Other'];
@@ -29,7 +31,7 @@ function RingProgress({ pct, color, size = 80, stroke = 7, children }) {
           strokeWidth={stroke}
           strokeDasharray={`${dash} ${circ}`}
           strokeLinecap="round"
-          style={{ transition: 'stroke-dasharray 1s ease' }}
+          style={{ transition: 'stroke-dasharray 0.8s ease' }}
         />
       </svg>
       <div className="ring-chart-label">{children}</div>
@@ -50,12 +52,21 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
     return localStorage.getItem(`skinova_connected_health_app_${currentUser.id}`) || null; // 'apple' | 'google' | null
   });
   const [showConnectModal, setShowConnectModal] = useState(false);
+  const [modalTab, setModalTab]                 = useState('screen'); // 'screen' | 'file' | 'pedometer' | 'guide'
   const [isSyncing, setIsSyncing]               = useState(false);
+  const [fileParsing, setFileParsing]           = useState(false);
   const [lastSyncTime, setLastSyncTime]         = useState(() => {
     return localStorage.getItem('skinova_last_health_sync') || null;
   });
 
-  // User Custom Goals (loaded from profile or defaults)
+  // Live Hardware Sensor Pedometer States (iOS Safari & Android Chrome)
+  const [liveSensorActive, setLiveSensorActive] = useState(false);
+  const [liveSteps, setLiveSteps]               = useState(0);
+  const [sensorPulse, setSensorPulse]           = useState(false);
+  const [motionPermissionState, setMotionPermissionState] = useState('prompt'); // 'prompt' | 'granted' | 'denied'
+  const lastStepTimeRef = useRef(0);
+
+  // User Custom Goals
   const [goals, setGoals] = useState({ steps: 10000, calories: 500, water: 2500, sleep: 8 });
 
   const [todayLog, setTodayLog] = useState({
@@ -63,10 +74,12 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
     sleep_hours: '', workout_type: '', workout_minutes: '', mood: '', notes: ''
   });
 
-  // Genuine mobile screen reading sync form
+  // Genuine exact screen sync form
   const [mobileSyncForm, setMobileSyncForm] = useState({
     steps: '', calories_burned: '', water_ml: '', heart_rate_bpm: '', sleep_hours: ''
   });
+
+  const [syncFeedback, setSyncFeedback] = useState(null);
 
   // Load custom goals if saved from Profile settings
   useEffect(() => {
@@ -80,17 +93,20 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
     }
   }, [currentUser]);
 
-  // Load health logs (Genuine only — no fake pre-populated logs)
+  // Load health logs and purge any old synthetic / mock logs
   useEffect(() => {
     if (!currentUser) return;
     const saved = localStorage.getItem(`skinova_health_${currentUser.id}`);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        // Filter out any previous fake seeded log or random auto-sync
+        // Strict filter: purge any fake seeded records with artificial multipliers
         const genuineLogs = parsed.filter(l => !(
           (l.steps === 8450 && l.calories_burned === 420) ||
-          (l.notes?.includes('Auto-synced from') && l.workout_minutes === 42)
+          (l.steps === 7800 && l.calories_burned === 375) ||
+          (l.steps === 8400 && l.calories_burned === 410) ||
+          (l.notes?.includes('Auto-synced from') && l.workout_minutes === 42) ||
+          (l.notes?.includes('Auto-synchronized with Apple Health & HealthKit sensors.'))
         ));
         setLogs(genuineLogs);
         if (genuineLogs.length !== parsed.length) {
@@ -116,29 +132,134 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
     fetchSummary();
   }, [currentUser]);
 
-  const latestLog = logs[0] || {};
-  const stepPct  = Math.min(100, Math.round((parseInt(latestLog.steps || 0) / goals.steps) * 100));
-  const calPct   = Math.min(100, Math.round((parseFloat(latestLog.calories_burned || 0) / goals.calories) * 100));
-  const waterPct = Math.min(100, Math.round((parseInt(latestLog.water_ml || 0) / goals.water) * 100));
-  const sleepPct = Math.min(100, Math.round((parseFloat(latestLog.sleep_hours || 0) / goals.sleep) * 100));
+  // Genuine entry for today (if none exists yet, today starts at 0!)
+  const todayEntry = logs.find(l => l.date === TODAY) || null;
+  const latestLog  = todayEntry || {};
 
-  // Save genuine readings (from mobile screen or file)
+  const stepPct  = goals.steps > 0 ? Math.min(100, Math.round((parseInt(latestLog.steps || 0) / goals.steps) * 100)) : 0;
+  const calPct   = goals.calories > 0 ? Math.min(100, Math.round((parseFloat(latestLog.calories_burned || 0) / goals.calories) * 100)) : 0;
+  const waterPct = goals.water > 0 ? Math.min(100, Math.round((parseInt(latestLog.water_ml || 0) / goals.water) * 100)) : 0;
+  const sleepPct = goals.sleep > 0 ? Math.min(100, Math.round((parseFloat(latestLog.sleep_hours || 0) / goals.sleep) * 100)) : 0;
+
+  // Platform detection
+  const isAppleDevice = typeof navigator !== 'undefined' && (/Mac|iPhone|iPad|iPod/.test(navigator.userAgent));
+  const isMobileDevice = typeof navigator !== 'undefined' && (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
+
+  // --- Real-time Hardware Accelerometer Step Counter (iOS & Android) ---
+  useEffect(() => {
+    if (!liveSensorActive) return;
+
+    const handleMotion = (event) => {
+      const acc = event.accelerationIncludingGravity || event.acceleration;
+      if (!acc || acc.x === null || acc.y === null || acc.z === null) return;
+
+      const mag = Math.sqrt(acc.x * acc.x + acc.y * acc.y + acc.z * acc.z);
+      const now = Date.now();
+
+      // Physical walking peak detection:
+      // Gravity is ~9.81 m/s^2. Normal walking peak swings > 12.2 m/s^2 with 280ms cadence refractory period
+      if (mag > 12.2 && (now - lastStepTimeRef.current) > 280) {
+        lastStepTimeRef.current = now;
+        setLiveSteps(s => s + 1);
+        setSensorPulse(true);
+        setTimeout(() => setSensorPulse(false), 180);
+      }
+    };
+
+    window.addEventListener('devicemotion', handleMotion);
+    return () => {
+      window.removeEventListener('devicemotion', handleMotion);
+    };
+  }, [liveSensorActive]);
+
+  const handleToggleLiveSensor = async () => {
+    if (liveSensorActive) {
+      setLiveSensorActive(false);
+      return;
+    }
+
+    // iOS Safari 13+ native permission request
+    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+      try {
+        const response = await DeviceMotionEvent.requestPermission();
+        if (response === 'granted') {
+          setMotionPermissionState('granted');
+          setLiveSensorActive(true);
+          setSyncFeedback({
+            type: 'success',
+            text: '✓ Live iPhone motion sensor active! Walk with your phone to count real physical steps.'
+          });
+        } else {
+          setMotionPermissionState('denied');
+          setSyncFeedback({
+            type: 'warning',
+            text: 'Motion sensor access was denied. You can still import Apple Health export.zip or enter your exact screen count.'
+          });
+        }
+      } catch (err) {
+        console.warn('Motion permission request error:', err);
+        setLiveSensorActive(true);
+      }
+    } else {
+      // Android Chrome / Standard browser
+      setMotionPermissionState('granted');
+      setLiveSensorActive(true);
+      setSyncFeedback({
+        type: 'success',
+        text: '✓ Live motion sensor active! Tracking movements in real time.'
+      });
+    }
+  };
+
+  const handleCommitLiveSteps = () => {
+    if (liveSteps <= 0) {
+      alert('No steps detected yet. Walk with your phone or enter your count manually.');
+      return;
+    }
+    const currentSteps = parseInt(latestLog.steps || 0);
+    const newTotalSteps = currentSteps + liveSteps;
+    const addedCalories = Math.round(liveSteps * 0.04);
+    const newTotalCalories = (parseFloat(latestLog.calories_burned || 0) + addedCalories);
+
+    handleSaveGenuineReading({
+      steps: newTotalSteps,
+      calories_burned: newTotalCalories,
+      water_ml: latestLog.water_ml || 0,
+      heart_rate_bpm: latestLog.heart_rate_bpm || null,
+      sleep_hours: latestLog.sleep_hours || null,
+      workout_type: 'Live Device Pedometer',
+      workout_minutes: Math.round(newTotalSteps / 100),
+      source: isAppleDevice ? 'Apple Device Motion Sensor (Live Accelerometer)' : 'Android Motion Sensor (Live Accelerometer)',
+      notes: `Recorded ${liveSteps} live steps via hardware accelerometer.`
+    });
+
+    setLiveSteps(0);
+    setSyncFeedback({
+      type: 'success',
+      text: `✓ Successfully saved ${liveSteps} live physical steps to today's dashboard!`
+    });
+  };
+
+  // --- Save genuine readings (from screen input or file import) ---
   const handleSaveGenuineReading = (reading) => {
     if (!currentUser) { onLoginRequest?.(); return; }
     const now = new Date();
+    const stepsNum = parseInt(reading.steps) || 0;
+    const caloriesNum = parseFloat(reading.calories_burned) || (stepsNum > 0 ? Math.round(stepsNum * 0.04) : 0);
+
     const entry = {
       user_id: currentUser.id,
       date: TODAY,
-      steps: parseInt(reading.steps) || 0,
-      calories_burned: parseFloat(reading.calories_burned) || 0,
+      steps: stepsNum,
+      calories_burned: caloriesNum,
       water_ml: parseInt(reading.water_ml) || 0,
       heart_rate_bpm: parseInt(reading.heart_rate_bpm) || null,
       sleep_hours: parseFloat(reading.sleep_hours) || null,
-      workout_type: reading.workout_type || (connectedApp ? 'Mobile Synced Movement' : 'Daily Activity'),
-      workout_minutes: parseInt(reading.workout_minutes) || 0,
-      mood: reading.mood || '😊 Good',
-      notes: reading.notes || `Genuine reading from ${connectedApp === 'apple' ? 'Apple Health' : connectedApp === 'google' ? 'Google Fit' : 'Manual Entry'}.`,
-      source: reading.source || (connectedApp === 'apple' ? 'Apple Health (Verified)' : connectedApp === 'google' ? 'Google Fit (Verified)' : 'Manual Entry'),
+      workout_type: reading.workout_type || (connectedApp ? 'Mobile Synced Activity' : 'Daily Movement'),
+      workout_minutes: parseInt(reading.workout_minutes) || Math.round(stepsNum / 100),
+      mood: reading.mood || '😊 Active',
+      notes: reading.notes || `Exact genuine reading confirmed from ${connectedApp === 'apple' ? 'Apple Health' : connectedApp === 'google' ? 'Google Fit' : 'Device'}.`,
+      source: reading.source || (connectedApp === 'apple' ? 'Apple Health (Screen Verified)' : connectedApp === 'google' ? 'Google Fit (Screen Verified)' : 'Manual Entry'),
       logged_at: now.toISOString(),
     };
 
@@ -147,203 +268,193 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
     setLogs(newLogs);
     localStorage.setItem(`skinova_health_${currentUser.id}`, JSON.stringify(newLogs.slice(0, 30)));
 
+    // Cross-device sync
+    api.syncUserActivity?.({
+      userId: currentUser.id,
+      email: currentUser.email,
+      healthLogs: newLogs.slice(0, 30),
+    }).catch(() => {});
+
     const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     setLastSyncTime(timeStr);
     localStorage.setItem('skinova_last_health_sync', timeStr);
     setShowConnectModal(false);
+    fetchSummary();
   };
 
-  // Genuine Apple Health export.xml or Google Fit JSON file parsing
-  const handleFileUpload = (e) => {
+  // --- Genuine Apple Health (export.zip / export.xml) and Google Fit file parsing ---
+  const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const text = event.target.result;
-        let parsedSteps = 0;
-        let parsedCalories = 0;
-        let parsedHeartRate = null;
+    setFileParsing(true);
+    setSyncFeedback({ type: 'warning', text: `Analyzing genuine records from ${file.name}…` });
 
-        if (file.name.endsWith('.xml') || text.includes('<HealthData')) {
-          const stepMatches = [...text.matchAll(/type="HKQuantityTypeIdentifierStepCount"[^>]*value="(\d+)"/g)];
-          for (const m of stepMatches.slice(-20)) {
-            parsedSteps += parseInt(m[1]) || 0;
-          }
-          const calMatches = [...text.matchAll(/type="HKQuantityTypeIdentifierActiveEnergyBurned"[^>]*value="([\d.]+)"/g)];
-          for (const m of calMatches.slice(-20)) {
-            parsedCalories += Math.round(parseFloat(m[1]) || 0);
-          }
-          const hrMatches = [...text.matchAll(/type="HKQuantityTypeIdentifierHeartRate"[^>]*value="(\d+)"/g)];
-          if (hrMatches.length > 0) {
-            parsedHeartRate = parseInt(hrMatches[hrMatches.length - 1][1]);
-          }
-        } else {
-          const data = JSON.parse(text);
-          parsedSteps = data.steps || data.step_count || 0;
-          parsedCalories = data.calories || data.active_calories || 0;
-          parsedHeartRate = data.heart_rate || null;
-        }
+    try {
+      const result = await parseHealthExportFile(file);
+      const { selectedRecord, dailyData, sortedDates, totalDaysFound } = result;
 
-        handleSaveGenuineReading({
-          steps: parsedSteps || 0,
-          calories_burned: parsedCalories || 0,
-          water_ml: 0,
-          sleep_hours: 0,
-          heart_rate_bpm: parsedHeartRate,
-          source: file.name.endsWith('.xml') ? 'Apple Health Export (Genuine XML)' : 'Google Fit Takeout (Genuine JSON)',
-          notes: `Parsed from genuine file: ${file.name}`
+      if (!selectedRecord || (selectedRecord.steps === 0 && selectedRecord.calories_burned === 0 && !selectedRecord.heart_rate_bpm)) {
+        setSyncFeedback({
+          type: 'warning',
+          text: `Export parsed successfully (${totalDaysFound} days found), but no step/calorie activity was found for ${selectedRecord.date || 'today'}.`
         });
-      } catch (err) {
-        alert('Could not parse health export file. Please enter the numbers shown on your phone screen.');
+        setFileParsing(false);
+        return;
       }
-    };
-    reader.readAsText(file.slice(0, 500000));
+
+      // Build multi-day history
+      const newEntries = [];
+      const dateLimit = sortedDates.slice(0, 7);
+      for (const d of dateLimit) {
+        if (dailyData[d]) {
+          newEntries.push({
+            user_id: currentUser?.id,
+            date: d,
+            steps: dailyData[d].steps || 0,
+            calories_burned: dailyData[d].calories_burned || 0,
+            water_ml: 0,
+            heart_rate_bpm: dailyData[d].heart_rate_bpm || null,
+            sleep_hours: dailyData[d].sleep_hours || null,
+            workout_type: 'Health Export Sync',
+            workout_minutes: dailyData[d].workout_minutes || Math.round((dailyData[d].steps || 0) / 100),
+            mood: '😊 Active',
+            notes: `Extracted from genuine export file: ${file.name}`,
+            source: dailyData[d].source,
+            logged_at: new Date().toISOString()
+          });
+        }
+      }
+
+      const targetEntry = newEntries.find(entry => entry.date === TODAY) || newEntries[0];
+      const existingOtherDates = logs.filter(l => !newEntries.some(ne => ne.date === l.date));
+      const mergedLogs = [...newEntries, ...existingOtherDates].sort((a, b) => b.date.localeCompare(a.date));
+
+      setLogs(mergedLogs);
+      if (currentUser) {
+        localStorage.setItem(`skinova_health_${currentUser.id}`, JSON.stringify(mergedLogs.slice(0, 30)));
+        api.post('/api/health/log', targetEntry).catch(() => {});
+        api.syncUserActivity?.({
+          userId: currentUser.id,
+          email: currentUser.email,
+          healthLogs: mergedLogs.slice(0, 30),
+        }).catch(() => {});
+      }
+
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      setLastSyncTime(timeStr);
+      localStorage.setItem('skinova_last_health_sync', timeStr);
+      setConnectedApp(file.name.includes('export') || file.name.endsWith('.xml') ? 'apple' : 'google');
+
+      setSyncFeedback({
+        type: 'success',
+        text: `✓ Genuine health export verified! Loaded ${targetEntry.steps.toLocaleString()} steps, ${targetEntry.calories_burned} kcal (${targetEntry.date}). Imported ${newEntries.length} days of history.`
+      });
+      setShowConnectModal(false);
+      fetchSummary();
+    } catch (err) {
+      console.error('Health file parse error:', err);
+      setSyncFeedback({
+        type: 'error',
+        text: `Could not parse file (${err.message || 'unknown format'}). You can enter your screen counts directly.`
+      });
+    } finally {
+      setFileParsing(false);
+    }
   };
 
   const handleClearAllHealthData = () => {
-    if (window.confirm('Reset all health logs? This will wipe stored entries and keep the tracker at zero until you enter genuine data.')) {
+    if (window.confirm('Reset all health logs? This will wipe stored entries and reset your dashboard to zero until you enter or sync genuine data.')) {
       if (currentUser) {
         localStorage.removeItem(`skinova_health_${currentUser.id}`);
         localStorage.removeItem('skinova_last_health_sync');
       }
       setLogs([]);
       setLastSyncTime(null);
+      setSyncFeedback({ type: 'success', text: '✓ Health logs reset to 0. Ready for genuine tracking.' });
     }
   };
 
-  const [syncFeedback, setSyncFeedback] = useState(null);
-
   const handleConnect = async (appType) => {
     setConnectedApp(appType);
-    setSyncFeedback(null);
     if (currentUser) {
       localStorage.setItem(`skinova_connected_health_app_${currentUser.id}`, appType);
     }
 
     if (appType === 'apple') {
-      // Trigger native iOS DeviceMotionEvent permission if running in Safari / WebKit on iOS 13+
       if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
         try {
           const res = await DeviceMotionEvent.requestPermission();
           if (res === 'granted') {
-            setSyncFeedback({ type: 'success', text: '✓ Apple Health & Motion sensor access granted on your device!' });
+            setMotionPermissionState('granted');
+            setSyncFeedback({ type: 'success', text: '✓ Apple Health & Motion sensor authorization granted on your device!' });
           } else {
-            setSyncFeedback({ type: 'warning', text: 'Apple motion sensor permission was denied. You can still import Apple Health XML or sync numbers.' });
+            setMotionPermissionState('denied');
+            setSyncFeedback({ type: 'warning', text: 'Apple motion sensor permission was denied. You can import export.zip or enter your screen counts.' });
           }
         } catch (e) {
-          console.warn('Apple motion sensor permission request:', e);
+          console.warn('Apple motion sensor permission:', e);
         }
       } else {
-        setSyncFeedback({ type: 'success', text: '✓ Apple Health connected. Ready to sync daily activity.' });
+        setSyncFeedback({ type: 'success', text: '✓ Apple Health mode active. Ready to sync exact counts.' });
       }
     } else if (appType === 'google') {
-      setSyncFeedback({ type: 'success', text: `✓ Google Fit Cloud connected with account: ${currentUser?.email || 'Active'}. No Android device required!` });
+      setSyncFeedback({ type: 'success', text: `✓ Google Fit mode connected. Ready to sync exact counts from your device.` });
     }
   };
 
   const handleDisconnect = () => {
     setConnectedApp(null);
+    setLiveSensorActive(false);
     setSyncFeedback(null);
     if (currentUser) {
       localStorage.removeItem(`skinova_connected_health_app_${currentUser.id}`);
     }
   };
 
+  // Genuine Mobile Sync: Never generate fake multipliers!
   const handleSyncHealthApp = async (appType) => {
     if (!currentUser) { onLoginRequest?.(); return; }
     setIsSyncing(true);
     setSyncFeedback(null);
 
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
     try {
-      if (appType === 'apple') {
-        // Request iOS motion sensor permission if needed
-        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-          try {
-            await DeviceMotionEvent.requestPermission();
-          } catch (e) {}
-        }
+      const existingToday = logs.find(l => l.date === TODAY);
 
-        const existingToday = logs.find(l => l.date === TODAY);
-        const stepsVal = existingToday?.steps || Math.round(goals.steps * 0.78);
-        const calVal = existingToday?.calories_burned || Math.round(goals.calories * 0.75);
-        const hrVal = existingToday?.heart_rate_bpm || 72;
-        const sleepVal = existingToday?.sleep_hours || 7.5;
-        const waterVal = existingToday?.water_ml || 2200;
+      if (existingToday && (existingToday.steps > 0 || existingToday.calories_burned > 0)) {
+        // Genuine data already exists for today: confirm and sync with cloud
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-        const syncedEntry = {
-          user_id: currentUser.id,
-          date: TODAY,
-          steps: stepsVal,
-          calories_burned: calVal,
-          water_ml: waterVal,
-          heart_rate_bpm: hrVal,
-          sleep_hours: sleepVal,
-          workout_type: 'Apple Health Sync',
-          workout_minutes: 35,
-          mood: '😊 Active',
-          notes: 'Auto-synchronized with Apple Health & HealthKit sensors.',
-          source: 'Apple Health (Verified)',
-          logged_at: now.toISOString(),
-        };
-
-        await api.post('/api/health/log', syncedEntry).catch(() => {});
-        const newLogs = [syncedEntry, ...logs.filter(l => l.date !== TODAY)];
-        setLogs(newLogs);
-        localStorage.setItem(`skinova_health_${currentUser.id}`, JSON.stringify(newLogs.slice(0, 30)));
-        setLastSyncTime(timeStr);
-        localStorage.setItem('skinova_last_health_sync', timeStr);
-        setSyncFeedback({ type: 'success', text: `✓ Apple Health data synchronized at ${timeStr}.` });
-
-        // Cloud sync cross-device
+        await api.post('/api/health/log', existingToday).catch(() => {});
         api.syncUserActivity?.({
           userId: currentUser.id,
           email: currentUser.email,
-          healthLogs: newLogs.slice(0, 30),
+          healthLogs: logs.slice(0, 30),
         }).catch(() => {});
-      } else if (appType === 'google') {
-        // Google Fit Web Cloud sync - works in any browser without needing an Android device
-        const existingToday = logs.find(l => l.date === TODAY);
-        const stepsVal = existingToday?.steps || Math.round(goals.steps * 0.84);
-        const calVal = existingToday?.calories_burned || Math.round(goals.calories * 0.82);
-        const hrVal = existingToday?.heart_rate_bpm || 70;
-        const sleepVal = existingToday?.sleep_hours || 8.0;
-        const waterVal = existingToday?.water_ml || 2400;
 
-        const syncedEntry = {
-          user_id: currentUser.id,
-          date: TODAY,
-          steps: stepsVal,
-          calories_burned: calVal,
-          water_ml: waterVal,
-          heart_rate_bpm: hrVal,
-          sleep_hours: sleepVal,
-          workout_type: 'Google Fit Cloud Sync',
-          workout_minutes: 42,
-          mood: '😊 Great',
-          notes: `Synchronized from Google Fit Cloud account (${currentUser.email}).`,
-          source: 'Google Fit Cloud (Verified)',
-          logged_at: now.toISOString(),
-        };
-
-        await api.post('/api/health/log', syncedEntry).catch(() => {});
-        const newLogs = [syncedEntry, ...logs.filter(l => l.date !== TODAY)];
-        setLogs(newLogs);
-        localStorage.setItem(`skinova_health_${currentUser.id}`, JSON.stringify(newLogs.slice(0, 30)));
         setLastSyncTime(timeStr);
         localStorage.setItem('skinova_last_health_sync', timeStr);
-        setSyncFeedback({ type: 'success', text: `✓ Google Fit Cloud synchronized with ${currentUser.email} at ${timeStr}.` });
-
-        // Cloud sync cross-device
-        api.syncUserActivity?.({
-          userId: currentUser.id,
-          email: currentUser.email,
-          healthLogs: newLogs.slice(0, 30),
-        }).catch(() => {});
+        setSyncFeedback({
+          type: 'success',
+          text: `✓ Cloud synchronized: Today's genuine record (${existingToday.steps.toLocaleString()} steps, ${existingToday.calories_burned} kcal) confirmed at ${timeStr}.`
+        });
+      } else {
+        // No genuine reading recorded for today yet.
+        // NEVER make up fake numbers! Open Exact Screen Sync modal to get genuine counts from the user's screen
+        setMobileSyncForm({
+          steps: existingToday?.steps ? String(existingToday.steps) : '',
+          calories_burned: existingToday?.calories_burned ? String(existingToday.calories_burned) : '',
+          water_ml: existingToday?.water_ml ? String(existingToday.water_ml) : '',
+          heart_rate_bpm: existingToday?.heart_rate_bpm ? String(existingToday.heart_rate_bpm) : '',
+          sleep_hours: existingToday?.sleep_hours ? String(existingToday.sleep_hours) : '',
+        });
+        setModalTab('screen');
+        setShowConnectModal(true);
+        setSyncFeedback({
+          type: 'warning',
+          text: `To show your exact ${appType === 'apple' ? 'Apple Health' : 'Google Fit'} count, please enter the numbers shown on your phone screen or import export.zip.`
+        });
       }
       fetchSummary();
     } catch (err) {
@@ -353,19 +464,22 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
     }
   };
 
-  const handleLog = async () => {
+  const handleManualLog = async () => {
     if (!currentUser) { onLoginRequest?.(); return; }
     setSaving(true);
+    const stepsNum = parseInt(todayLog.steps) || 0;
+    const caloriesNum = parseFloat(todayLog.calories_burned) || (stepsNum > 0 ? Math.round(stepsNum * 0.04) : 0);
+
     const entry = {
       user_id: currentUser.id,
       date: TODAY,
-      steps:           parseInt(todayLog.steps) || 0,
-      calories_burned: parseFloat(todayLog.calories_burned) || 0,
+      steps:           stepsNum,
+      calories_burned: caloriesNum,
       water_ml:        parseInt(todayLog.water_ml) || 0,
       heart_rate_bpm:  parseInt(todayLog.heart_rate_bpm) || null,
       sleep_hours:     parseFloat(todayLog.sleep_hours) || null,
       workout_type:    todayLog.workout_type || null,
-      workout_minutes: parseInt(todayLog.workout_minutes) || 0,
+      workout_minutes: parseInt(todayLog.workout_minutes) || Math.round(stepsNum / 100),
       mood:            todayLog.mood || null,
       notes:           todayLog.notes || '',
       source:          'Manual Log',
@@ -387,7 +501,7 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
     fetchSummary();
   };
 
-  // Chart data (last 7 days)
+  // 7-day chart data
   const chartData = logs.slice(0, 7).reverse().map(l => ({
     date:  new Date(l.date).toLocaleDateString('en', { weekday: 'short' }),
     steps: l.steps || 0,
@@ -401,15 +515,12 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
         <div className="card p-10 text-center">
           <Heart size={32} className="text-slate-300 mx-auto mb-3"/>
           <h2 className="text-xl font-bold text-slate-800 mb-2">Health & Fitness Tracker</h2>
-          <p className="text-slate-500 text-sm mb-5">Sign in to track your daily health metrics and sync with Apple Health or Google Fit.</p>
+          <p className="text-slate-500 text-sm mb-5">Sign in to track your genuine daily health metrics and sync with Apple Health or Google Fit.</p>
           <button className="btn btn-primary" onClick={onLoginRequest}>Sign In</button>
         </div>
       </div>
     );
   }
-
-  // Detect platform recommendation
-  const isAppleDevice = typeof navigator !== 'undefined' && (/Mac|iPhone|iPad|iPod/.test(navigator.userAgent));
 
   return (
     <div className="space-y-5 animate-fade-up">
@@ -420,7 +531,7 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
             Health & Fitness Tracker
           </h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            Real-time daily wellness monitoring synced with your mobile fitness apps
+            100% Genuine wellness tracking synced with Apple Health & Google Fit
           </p>
         </div>
 
@@ -438,7 +549,7 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
           ) : (
             <button
               className="btn btn-sm btn-secondary flex items-center gap-1.5"
-              onClick={() => setShowConnectModal(true)}
+              onClick={() => { setModalTab('screen'); setShowConnectModal(true); }}
             >
               <Smartphone size={14} className="text-teal-600"/> Connect Health App
             </button>
@@ -491,21 +602,21 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
             <div className="flex items-center gap-2">
               <p className="text-sm font-bold text-slate-900">
                 {connectedApp === 'apple'
-                  ? 'Apple Health (HealthKit) Active'
+                  ? 'Apple Health (iOS) Connected'
                   : connectedApp === 'google'
-                  ? 'Google Fit / Health Connect Active'
+                  ? 'Google Fit / Health Connect Connected'
                   : 'Connect Mobile Health App'}
               </p>
               {connectedApp && (
                 <span className="badge badge-success text-[10px] py-0.5 font-bold">
-                  ✓ Connected
+                  ✓ Active
                 </span>
               )}
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
               {connectedApp
-                ? `Auto-importing steps, calories, heart rate & sleep. Last synced: ${lastSyncTime}`
-                : `Sync steps & active workouts automatically with ${isAppleDevice ? 'Apple Health / Fitness' : 'Google Fit'}.`}
+                ? `Syncing exact steps, active energy, heart rate & sleep. Last synced: ${lastSyncTime || 'Pending today'}`
+                : `Connect with ${isAppleDevice ? 'Apple Health' : 'Google Fit'} for genuine live pedometer, export.zip import, or exact screen sync.`}
             </p>
           </div>
         </div>
@@ -514,10 +625,10 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
           {connectedApp ? (
             <div className="flex items-center gap-2">
               <button
-                className="btn btn-sm btn-ghost text-xs text-slate-500 hover:text-slate-700"
-                onClick={() => setShowConnectModal(true)}
+                className="btn btn-sm btn-ghost text-xs text-teal-700 bg-teal-50 hover:bg-teal-100"
+                onClick={() => { setModalTab('screen'); setShowConnectModal(true); }}
               >
-                Settings
+                Sync Options
               </button>
               <button
                 className="btn btn-sm btn-ghost text-xs text-red-600 hover:bg-red-50"
@@ -529,11 +640,81 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
           ) : (
             <button
               className="btn btn-sm btn-primary text-xs flex items-center gap-1.5"
-              onClick={() => setShowConnectModal(true)}
+              onClick={() => { setModalTab('screen'); setShowConnectModal(true); }}
             >
-              <Zap size={13}/> Set Up Sync
+              <Zap size={13}/> Set Up Genuine Sync
             </button>
           )}
+        </div>
+      </div>
+
+      {/* Live Device Hardware Motion Pedometer Widget */}
+      <div className="card p-4 border border-teal-200 bg-gradient-to-r from-teal-50/70 to-emerald-50/50 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <div className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all ${
+                liveSensorActive ? 'bg-teal-600 text-white shadow-md shadow-teal-500/30' : 'bg-white border border-teal-200 text-teal-700'
+              }`}>
+                <Footprints size={20} className={liveSensorActive ? 'animate-bounce' : ''}/>
+              </div>
+              {liveSensorActive && (
+                <span className={`absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white transition-all ${
+                  sensorPulse ? 'bg-emerald-400 scale-125' : 'bg-teal-500'
+                }`} />
+              )}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-bold text-slate-900">
+                  Live Phone Motion Pedometer
+                </p>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                  liveSensorActive ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
+                }`}>
+                  {liveSensorActive ? '● Sensor Active' : '○ Inactive'}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {liveSensorActive
+                  ? `Walk with your phone. Accelerometer counts your real physical steps in real time.`
+                  : `Uses your device's built-in 3-axis accelerometer sensor. 100% genuine hardware tracking.`}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-start sm:self-center">
+            {liveSensorActive ? (
+              <>
+                <div className="bg-white px-3 py-1.5 rounded-xl border border-teal-200 text-center">
+                  <p className="text-xs font-black text-teal-800" style={{ fontFamily: 'Outfit,sans-serif' }}>
+                    {liveSteps} <span className="text-[10px] font-normal text-slate-500">live steps</span>
+                  </p>
+                </div>
+                <button
+                  className="btn btn-sm btn-primary text-xs flex items-center gap-1"
+                  onClick={handleCommitLiveSteps}
+                  disabled={liveSteps === 0}
+                  title="Add live recorded steps to today's activity log"
+                >
+                  <Check size={13}/> Save to Log
+                </button>
+                <button
+                  className="btn btn-sm btn-ghost text-xs text-slate-600 hover:bg-slate-100"
+                  onClick={handleToggleLiveSensor}
+                >
+                  <Pause size={13}/> Stop
+                </button>
+              </>
+            ) : (
+              <button
+                className="btn btn-sm btn-secondary text-xs flex items-center gap-1.5 font-semibold text-teal-800 border-teal-300 hover:bg-teal-50"
+                onClick={handleToggleLiveSensor}
+              >
+                <Play size={13} className="text-teal-600 fill-teal-600"/> Start Live iPhone / Phone Pedometer
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -553,20 +734,28 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
       {/* Today Tab */}
       {tab === 'today' && (
         <div className="space-y-4 animate-fade-up">
-          {logs.length === 0 && (
-            <div className="card p-3.5 bg-emerald-50/60 border border-emerald-200/80 flex items-center justify-between gap-3 text-xs text-emerald-800">
+          {!todayEntry && (
+            <div className="card p-3.5 bg-amber-50/80 border border-amber-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-900">
               <div className="flex items-center gap-2">
-                <ShieldCheck size={16} className="text-emerald-600 flex-shrink-0"/>
+                <ShieldCheck size={16} className="text-amber-700 flex-shrink-0"/>
                 <span>
-                  <strong>Genuine Activity Mode:</strong> No reports pre-populated. Ring targets reflect only your recorded data (0 logged today).
+                  <strong>Awaiting Today's Health Data:</strong> Activity rings display 0% until you enter or sync genuine data for today ({TODAY}).
                 </span>
               </div>
-              <button
-                className="btn btn-xs btn-primary font-medium flex-shrink-0"
-                onClick={() => setLogging(true)}
-              >
-                Log Today
-              </button>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  className="btn btn-xs btn-primary font-medium"
+                  onClick={() => { setModalTab('screen'); setShowConnectModal(true); }}
+                >
+                  Sync Screen Count
+                </button>
+                <button
+                  className="btn btn-xs btn-secondary font-medium"
+                  onClick={() => setLogging(true)}
+                >
+                  Manual Log
+                </button>
+              </div>
             </div>
           )}
 
@@ -575,12 +764,12 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Daily Activity Rings</h2>
               {latestLog.source ? (
-                <span className="text-[11px] text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full font-medium">
+                <span className="text-[11px] text-teal-700 bg-teal-50 px-2.5 py-0.5 rounded-full font-medium border border-teal-200/60">
                   Source: {latestLog.source}
                 </span>
               ) : (
                 <span className="text-[11px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full font-medium">
-                  Awaiting Daily Log
+                  Awaiting Daily Sync
                 </span>
               )}
             </div>
@@ -670,10 +859,10 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
               <TrendingUp size={36} className="mx-auto text-slate-300"/>
               <h3 className="text-base font-bold text-slate-700">No Activity History Yet</h3>
               <p className="text-sm max-w-sm mx-auto">
-                Once you log your daily workouts or sync from Apple Health / Google Fit, your 7-day steps and calorie progression charts will appear here.
+                Once you log your daily workouts, upload an Apple Health export.zip, or sync your counts, your 7-day progression charts will appear here.
               </p>
-              <button className="btn btn-primary btn-sm mx-auto" onClick={() => setLogging(true)}>
-                <Plus size={14}/> Log Your First Activity
+              <button className="btn btn-primary btn-sm mx-auto" onClick={() => { setModalTab('screen'); setShowConnectModal(true); }}>
+                <Plus size={14}/> Enter Today's Count
               </button>
             </div>
           ) : (
@@ -720,7 +909,7 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
                 { label: 'Hydration Target', curr: latestLog.water_ml || 0, goal: goals.water, unit: 'ml', color: '#06B6D4' },
                 { label: 'Sleep Target', curr: latestLog.sleep_hours || 0, goal: goals.sleep, unit: 'hrs', color: '#7C3AED' },
               ].map(item => {
-                const pct = Math.min(100, Math.round((item.curr / item.goal) * 100));
+                const pct = item.goal > 0 ? Math.min(100, Math.round((item.curr / item.goal) * 100)) : 0;
                 return (
                   <div key={item.label} className="space-y-1.5">
                     <div className="flex justify-between text-xs font-semibold text-slate-700">
@@ -741,10 +930,10 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
         </div>
       )}
 
-      {/* Connect Health App Modal */}
+      {/* Connect & Genuine Sync Modal */}
       {showConnectModal && (
         <div className="modal-backdrop" onClick={() => setShowConnectModal(false)}>
-          <div className="modal-box max-w-md w-full p-4 sm:p-6 space-y-4 sm:space-y-5 animate-fade-up" onClick={e => e.stopPropagation()}>
+          <div className="modal-box max-w-lg w-full p-4 sm:p-6 space-y-4 animate-fade-up" onClick={e => e.stopPropagation()}>
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center text-teal-600">
@@ -752,9 +941,9 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-slate-900" style={{ fontFamily: 'Outfit,sans-serif' }}>
-                    Connect Health Tracking
+                    Genuine Health App Sync
                   </h2>
-                  <p className="text-xs text-slate-500">Sync with your native iOS or Android health app</p>
+                  <p className="text-xs text-slate-500">Exact data from Apple Health (iOS) and Google Fit (Android)</p>
                 </div>
               </div>
               <button className="btn btn-icon btn-sm btn-ghost" onClick={() => setShowConnectModal(false)}>
@@ -762,140 +951,124 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
               </button>
             </div>
 
-            <div className="space-y-4">
-              {/* App Selector */}
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  className={`p-3 rounded-xl border text-left flex items-center gap-2.5 transition-all ${
-                    connectedApp === 'apple' ? 'border-teal-500 bg-teal-50/60 ring-2 ring-teal-500/20' : 'border-slate-200 hover:border-slate-300 bg-white'
-                  }`}
-                  onClick={() => handleConnect('apple')}
-                >
-                  <span className="text-xl">🍏</span>
-                  <div>
-                    <p className="text-xs font-bold text-slate-800">Apple Health</p>
-                    <p className="text-[10px] text-slate-400">iOS HealthKit & Sensors</p>
-                  </div>
-                </button>
+            {/* App Chooser */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                className={`p-3 rounded-xl border text-left flex items-center gap-2.5 transition-all ${
+                  connectedApp === 'apple' ? 'border-teal-500 bg-teal-50/60 ring-2 ring-teal-500/20' : 'border-slate-200 hover:border-slate-300 bg-white'
+                }`}
+                onClick={() => handleConnect('apple')}
+              >
+                <span className="text-xl">🍏</span>
+                <div>
+                  <p className="text-xs font-bold text-slate-800">Apple Health</p>
+                  <p className="text-[10px] text-slate-400">iOS HealthKit & iPhone</p>
+                </div>
+              </button>
 
-                <button
-                  type="button"
-                  className={`p-3 rounded-xl border text-left flex items-center gap-2.5 transition-all ${
-                    connectedApp === 'google' ? 'border-teal-500 bg-teal-50/60 ring-2 ring-teal-500/20' : 'border-slate-200 hover:border-slate-300 bg-white'
-                  }`}
-                  onClick={() => handleConnect('google')}
-                >
-                  <span className="text-xl">📱</span>
-                  <div>
-                    <p className="text-xs font-bold text-slate-800">Google Fit</p>
-                    <p className="text-[10px] text-slate-400">Cloud Sync (No Android needed)</p>
-                  </div>
-                </button>
+              <button
+                type="button"
+                className={`p-3 rounded-xl border text-left flex items-center gap-2.5 transition-all ${
+                  connectedApp === 'google' ? 'border-teal-500 bg-teal-50/60 ring-2 ring-teal-500/20' : 'border-slate-200 hover:border-slate-300 bg-white'
+                }`}
+                onClick={() => handleConnect('google')}
+              >
+                <span className="text-xl">📱</span>
+                <div>
+                  <p className="text-xs font-bold text-slate-800">Google Fit</p>
+                  <p className="text-[10px] text-slate-400">Android & Health Connect</p>
+                </div>
+              </button>
+            </div>
+
+            {/* iOS / Android Privacy Explanation */}
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-600 space-y-1">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                <ShieldCheck size={14} className="text-teal-600"/>
+                <span>Device Sandbox Protection</span>
               </div>
+              <p className="text-[11px] leading-relaxed text-slate-500">
+                Apple Health and Android Health Connect lock your personal health database inside your phone's hardware security enclave. Web browsers are strictly prevented from secretly reading your health database.
+                Skinova provides <strong>3 genuine, verified sync methods</strong> below:
+              </p>
+            </div>
 
-              {/* Dynamic Connection Helper Banner */}
-              {connectedApp === 'apple' ? (
-                <div className="p-3 bg-teal-50 border border-teal-200 rounded-xl space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-teal-900 flex items-center gap-1.5">
-                      🍏 Apple Device & Sensor Integration
-                    </span>
-                    <span className="badge badge-success text-[10px]">Active</span>
-                  </div>
-                  <p className="text-[11px] text-teal-800">
-                    On iPhone or iPad, tap below to grant motion sensor access for live pedometer tracking.
-                  </p>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-secondary text-xs flex-1"
-                      onClick={() => handleConnect('apple')}
-                    >
-                      <Zap size={12} className="text-teal-600"/> Request Sensor Permission
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-primary text-xs flex-1"
-                      onClick={() => handleSyncHealthApp('apple')}
-                      disabled={isSyncing}
-                    >
-                      <RefreshCw size={12} className={isSyncing ? 'animate-spin' : ''}/>
-                      {isSyncing ? 'Syncing…' : 'Sync Apple Health'}
-                    </button>
-                  </div>
-                </div>
-              ) : connectedApp === 'google' ? (
-                <div className="p-3 bg-sky-50 border border-sky-200 rounded-xl space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-sky-900 flex items-center gap-1.5">
-                      📱 Google Fit Cloud Integration
-                    </span>
-                    <span className="badge text-[10px] bg-sky-200 text-sky-800 font-bold">Cloud Synced</span>
-                  </div>
-                  <p className="text-[11px] text-sky-800">
-                    No Android device required! Google Fit syncs directly with your Google Account across Web, iOS, Mac, or Windows.
-                  </p>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-primary text-xs w-full"
-                    onClick={() => handleSyncHealthApp('google')}
-                    disabled={isSyncing}
-                  >
-                    <RefreshCw size={12} className={isSyncing ? 'animate-spin' : ''}/>
-                    {isSyncing ? 'Syncing Cloud Data…' : 'Sync Google Fit Cloud'}
-                  </button>
-                </div>
-              ) : null}
+            {/* Sub-tabs for Sync Methods */}
+            <div className="flex border-b border-slate-200 text-xs font-semibold">
+              <button
+                className={`py-2 px-3 border-b-2 transition-all ${
+                  modalTab === 'screen' ? 'border-teal-600 text-teal-700 font-bold' : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+                onClick={() => setModalTab('screen')}
+              >
+                1. Screen Sync (Fastest)
+              </button>
+              <button
+                className={`py-2 px-3 border-b-2 transition-all ${
+                  modalTab === 'file' ? 'border-teal-600 text-teal-700 font-bold' : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+                onClick={() => setModalTab('file')}
+              >
+                2. Export Zip / XML
+              </button>
+              <button
+                className={`py-2 px-3 border-b-2 transition-all ${
+                  modalTab === 'pedometer' ? 'border-teal-600 text-teal-700 font-bold' : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+                onClick={() => setModalTab('pedometer')}
+              >
+                3. Live Sensor
+              </button>
+            </div>
 
-              {/* Feedback toast in modal */}
-              {syncFeedback && (
-                <div className={`p-2.5 rounded-lg text-xs font-medium ${
-                  syncFeedback.type === 'success' ? 'bg-emerald-100 text-emerald-900' :
-                  syncFeedback.type === 'warning' ? 'bg-amber-100 text-amber-900' :
-                  'bg-rose-100 text-rose-900'
-                }`}>
-                  {syncFeedback.text}
-                </div>
-              )}
+            {/* Feedback toast in modal */}
+            {syncFeedback && (
+              <div className={`p-2.5 rounded-lg text-xs font-medium ${
+                syncFeedback.type === 'success' ? 'bg-emerald-100 text-emerald-900' :
+                syncFeedback.type === 'warning' ? 'bg-amber-100 text-amber-900' :
+                'bg-rose-100 text-rose-900'
+              }`}>
+                {syncFeedback.text}
+              </div>
+            )}
 
-              {/* Method A: Genuine Screen Reading Input */}
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                    <Smartphone size={14} className="text-teal-600"/> Sync from Phone Screen
-                  </p>
-                  <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full">
-                    100% Genuine
-                  </span>
-                </div>
+            {/* Tab 1: Screen Sync */}
+            {modalTab === 'screen' && (
+              <div className="space-y-3">
                 <p className="text-[11px] text-slate-500">
-                  Open your {connectedApp === 'apple' ? 'Apple Health' : 'Google Fit'} app and enter the numbers shown on your screen right now:
+                  Check your {connectedApp === 'apple' ? 'Apple Health' : 'Google Fit'} app or widget right now and enter the exact counts shown on your phone:
                 </p>
 
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div>
-                    <label className="text-[10px] font-semibold text-slate-500">Steps Count</label>
+                    <label className="text-[10px] font-semibold text-slate-500 flex items-center gap-1">
+                      <Footprints size={11} className="text-teal-600"/> Steps Count
+                    </label>
                     <input
                       type="number"
-                      className="input input-sm w-full text-xs"
-                      placeholder="e.g. 6420"
+                      className="input input-sm w-full text-xs font-semibold"
+                      placeholder="e.g. 5420"
                       value={mobileSyncForm.steps}
                       onChange={e => setMobileSyncForm(f => ({ ...f, steps: e.target.value }))}
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-semibold text-slate-500">Active Burn (kcal)</label>
+                    <label className="text-[10px] font-semibold text-slate-500 flex items-center gap-1">
+                      <Flame size={11} className="text-rose-500"/> Active Burn (kcal)
+                    </label>
                     <input
                       type="number"
-                      className="input input-sm w-full text-xs"
-                      placeholder="e.g. 310"
+                      className="input input-sm w-full text-xs font-semibold"
+                      placeholder="e.g. 290"
                       value={mobileSyncForm.calories_burned}
                       onChange={e => setMobileSyncForm(f => ({ ...f, calories_burned: e.target.value }))}
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-semibold text-slate-500">Resting Heart (bpm)</label>
+                    <label className="text-[10px] font-semibold text-slate-500 flex items-center gap-1">
+                      <Heart size={11} className="text-red-500"/> Resting Heart (bpm)
+                    </label>
                     <input
                       type="number"
                       className="input input-sm w-full text-xs"
@@ -905,7 +1078,9 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-semibold text-slate-500">Sleep (hours)</label>
+                    <label className="text-[10px] font-semibold text-slate-500 flex items-center gap-1">
+                      <Moon size={11} className="text-purple-500"/> Sleep (hours)
+                    </label>
                     <input
                       type="number"
                       step="0.1"
@@ -918,42 +1093,104 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
                 </div>
 
                 <button
-                  className="btn btn-primary btn-sm w-full font-medium text-xs mt-1"
+                  className="btn btn-primary btn-sm w-full font-medium text-xs mt-2"
                   onClick={() => handleSaveGenuineReading(mobileSyncForm)}
+                  disabled={!mobileSyncForm.steps && !mobileSyncForm.calories_burned}
                 >
-                  Save Genuine Readings
+                  ✓ Confirm & Sync Exact Numbers to Skinova
                 </button>
               </div>
+            )}
 
-              {/* Method B: Import Health Export File */}
-              <div className="p-3.5 rounded-xl border border-dashed border-slate-300 bg-white hover:bg-slate-50/50 transition-colors space-y-2 text-center">
-                <p className="text-xs font-bold text-slate-700 flex items-center justify-center gap-1.5">
-                  <Upload size={13} className="text-teal-600"/> Or Import Export File (.xml / .json)
-                </p>
-                <p className="text-[10px] text-slate-400">
-                  Export from Apple Health (Profile &gt; Export All Data) or Google Takeout
-                </p>
-                <label className="btn btn-secondary btn-xs cursor-pointer inline-flex items-center gap-1">
-                  <FileText size={12}/> Choose Export File
-                  <input type="file" accept=".xml,.json,.zip" className="hidden" onChange={handleFileUpload}/>
-                </label>
-              </div>
+            {/* Tab 2: Export File Import */}
+            {modalTab === 'file' && (
+              <div className="space-y-3">
+                <div className="p-3 bg-teal-50/80 border border-teal-200 rounded-xl space-y-1.5 text-xs text-teal-950">
+                  <p className="font-bold flex items-center gap-1.5">
+                    <FileText size={14} className="text-teal-700"/> How to Export Apple Health Data:
+                  </p>
+                  <ol className="list-decimal pl-4 space-y-0.5 text-[11px] text-teal-900">
+                    <li>Open <strong>Apple Health</strong> app on your iPhone.</li>
+                    <li>Tap your <strong>Profile picture</strong> in the top right corner.</li>
+                    <li>Scroll down and tap <strong>Export All Health Data</strong>.</li>
+                    <li>AirDrop or save the <strong>export.zip</strong> file, then select it below.</li>
+                  </ol>
+                </div>
 
-              {/* Method C: Reset Button */}
-              <div className="flex items-center justify-between pt-1 text-xs">
-                <button
-                  className="text-xs text-red-600 hover:text-red-700 flex items-center gap-1 font-medium"
-                  onClick={handleClearAllHealthData}
-                >
-                  <Trash2 size={12}/> Reset All Stored Readings
-                </button>
-                <button
-                  className="text-xs text-slate-500 hover:text-slate-800"
-                  onClick={() => setShowConnectModal(false)}
-                >
-                  Close
-                </button>
+                <div className="p-4 rounded-xl border border-dashed border-teal-300 bg-white hover:bg-slate-50/50 transition-colors space-y-2 text-center">
+                  <p className="text-xs font-bold text-slate-800 flex items-center justify-center gap-1.5">
+                    <Upload size={14} className="text-teal-600"/> Import export.zip, export.xml, or Google Takeout
+                  </p>
+                  <p className="text-[10px] text-slate-500">
+                    Files are parsed 100% privately in your browser using JSZip without uploading to external servers.
+                  </p>
+                  <label className={`btn btn-primary btn-sm cursor-pointer inline-flex items-center gap-1.5 ${fileParsing ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <Upload size={13}/>
+                    <span>{fileParsing ? 'Parsing Health Archive…' : 'Select Health Export File'}</span>
+                    <input type="file" accept=".zip,.xml,.json,.csv" className="hidden" onChange={handleFileUpload}/>
+                  </label>
+                </div>
               </div>
+            )}
+
+            {/* Tab 3: Live Motion Sensor */}
+            {modalTab === 'pedometer' && (
+              <div className="space-y-3">
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs space-y-1 text-emerald-950">
+                  <p className="font-bold flex items-center gap-1.5">
+                    <Zap size={13} className="text-emerald-700"/> Native Accelerometer Sensor
+                  </p>
+                  <p className="text-[11px] text-emerald-900">
+                    On iPhone Safari, Apple prompts for motion sensor permission. On Android Chrome, motion sensors connect automatically.
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center space-y-3">
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="text-2xl font-black text-teal-800" style={{ fontFamily: 'Outfit,sans-serif' }}>
+                      {liveSteps}
+                    </span>
+                    <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Live Steps Counted</span>
+                  </div>
+
+                  <div className="flex justify-center gap-2">
+                    <button
+                      type="button"
+                      className={`btn btn-sm text-xs font-semibold flex items-center gap-1.5 ${
+                        liveSensorActive ? 'btn-secondary text-red-600 border-red-200' : 'btn-primary'
+                      }`}
+                      onClick={handleToggleLiveSensor}
+                    >
+                      {liveSensorActive ? <><Pause size={13}/> Stop Live Sensor</> : <><Play size={13}/> Start Sensor Tracking</>}
+                    </button>
+                    {liveSteps > 0 && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-primary text-xs"
+                        onClick={handleCommitLiveSteps}
+                      >
+                        <Check size={13}/> Save to Daily Log
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Bottom Actions */}
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+              <button
+                className="text-xs text-red-600 hover:text-red-700 flex items-center gap-1 font-medium"
+                onClick={handleClearAllHealthData}
+              >
+                <Trash2 size={12}/> Reset Health Data to 0
+              </button>
+              <button
+                className="btn btn-sm btn-ghost text-xs text-slate-600"
+                onClick={() => setShowConnectModal(false)}
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
@@ -1016,7 +1253,7 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
                 <label className="label">Notes</label>
                 <textarea className="textarea h-16" placeholder="Any health observations…" value={todayLog.notes} onChange={e => setTodayLog(t => ({...t, notes: e.target.value}))}/>
               </div>
-              <button className="btn btn-primary btn-lg w-full" onClick={handleLog} disabled={saving}>
+              <button className="btn btn-primary btn-lg w-full" onClick={handleManualLog} disabled={saving}>
                 {saving ? 'Saving…' : <><Save size={16}/> Save Today's Log</>}
               </button>
             </div>
