@@ -102,14 +102,51 @@ export default function RAGChatbot({ currentUser, lastResult, onRecordSearch, in
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
-  const [input, setInput]     = useState(initialQuery || '');
+  const [input, setInput]     = useState(typeof initialQuery === 'string' ? initialQuery : (initialQuery?.query || ''));
   const [loading, setLoading] = useState(false);
   const [blocked, setBlocked] = useState(false);
   const bottomRef = useRef();
   const inputRef  = useRef();
 
   useEffect(() => {
-    if (initialQuery) {
+    if (!initialQuery) return;
+
+    if (typeof initialQuery === 'object' && initialQuery !== null) {
+      const q = typeof initialQuery.query === 'string' ? initialQuery.query : '';
+      const ans = typeof initialQuery.answer === 'string' ? initialQuery.answer : '';
+      const sources = Array.isArray(initialQuery.sources) ? initialQuery.sources : [];
+      const timestamp = initialQuery.date
+        ? new Date(initialQuery.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      if (ans && q) {
+        // Restore full previous conversation for viewing
+        setMessages([
+          {
+            id: 1,
+            role: 'ai',
+            text: "Hello! I'm SKINOVA's AI dermatology consultant. Below is your previous consultation from your activity history:",
+            time: timestamp
+          },
+          {
+            id: 2,
+            role: 'user',
+            text: q,
+            time: timestamp
+          },
+          {
+            id: 3,
+            role: 'ai',
+            text: ans,
+            sources: sources,
+            time: timestamp
+          }
+        ]);
+        setInput('');
+      } else if (q) {
+        setInput(q);
+      }
+    } else if (typeof initialQuery === 'string') {
       setInput(initialQuery);
     }
   }, [initialQuery]);
@@ -119,7 +156,7 @@ export default function RAGChatbot({ currentUser, lastResult, onRecordSearch, in
   }, [messages]);
 
   const sendMessage = async (text) => {
-    const raw = (text || input).trim();
+    const raw = typeof text === 'string' ? text.trim() : (typeof input === 'string' ? input.trim() : '');
     if (!raw || loading) return;
     setInput('');
     setBlocked(false);
@@ -128,15 +165,14 @@ export default function RAGChatbot({ currentUser, lastResult, onRecordSearch, in
     const q = sanitizeText(raw, 500);
     if (isPromptInjection(q)) {
       setBlocked(true);
+      const blockText = '⚠️ Your message contains patterns that are not allowed. Please ask a skin-health related question.';
       setMessages(prev => [...prev,
         { id: Date.now(), role: 'user', text: raw, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) },
-        { id: Date.now()+1, role: 'ai', text: '⚠️ Your message contains patterns that are not allowed. Please ask a skin-health related question.', time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), isWarning: true }
+        { id: Date.now()+1, role: 'ai', text: blockText, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), isWarning: true }
       ]);
+      onRecordSearch?.(q, 'ai_consultation', { answer: blockText, sources: [] });
       return;
     }
-
-    // Record user search/consultation history
-    onRecordSearch?.(q, 'ai_consultation');
 
     const userMsg = { id: Date.now(), role: 'user', text: q, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
     setMessages(prev => [...prev, userMsg]);
@@ -170,18 +206,30 @@ export default function RAGChatbot({ currentUser, lastResult, onRecordSearch, in
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setMessages(prev => [...prev, aiMsg]);
+
+      // Record in user activity history with full AI answer and sources
+      onRecordSearch?.(q, 'ai_consultation', {
+        answer: aiMsg.text,
+        sources: sources,
+      });
     } catch (err) {
       const errText = err?.message || '';
       const isInjectionBlocked = errText.toLowerCase().includes('disallowed');
+      const failText = isInjectionBlocked
+        ? '⚠️ Your query was blocked for security reasons. Please ask a dermatology-related question.'
+        : `I'm having trouble connecting to the AI server right now. Please ensure the backend is running and try again.\n\nError: ${errText}`;
 
       setMessages(prev => [...prev, {
         id: Date.now() + 1, role: 'ai',
-        text: isInjectionBlocked
-          ? '⚠️ Your query was blocked for security reasons. Please ask a dermatology-related question.'
-          : `I'm having trouble connecting to the AI server right now. Please ensure the backend is running and try again.\n\nError: ${errText}`,
+        text: failText,
         isWarning: isInjectionBlocked,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }]);
+
+      onRecordSearch?.(q, 'ai_consultation', {
+        answer: failText,
+        sources: [],
+      });
     } finally {
       setLoading(false);
     }
@@ -303,7 +351,7 @@ export default function RAGChatbot({ currentUser, lastResult, onRecordSearch, in
           className="flex-1 resize-none text-xs sm:text-sm text-slate-800 outline-none bg-transparent placeholder-slate-400 max-h-32"
           placeholder="Ask about skin conditions, treatments, prevention…"
           rows={1}
-          value={input}
+          value={typeof input === 'string' ? input : ''}
           onChange={e => setInput(e.target.value)}
           onKeyDown={handleKey}
           style={{lineHeight:'1.5'}}
@@ -312,7 +360,7 @@ export default function RAGChatbot({ currentUser, lastResult, onRecordSearch, in
         <button
           className="btn btn-primary btn-icon self-end flex-shrink-0"
           onClick={() => sendMessage()}
-          disabled={!input.trim() || loading}
+          disabled={!(typeof input === 'string' && input.trim()) || loading}
         >
           {loading ? <Loader2 size={15} className="animate-spin"/> : <Send size={15}/>}
         </button>

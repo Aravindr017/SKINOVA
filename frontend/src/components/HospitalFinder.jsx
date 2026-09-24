@@ -36,14 +36,22 @@ export default function HospitalFinder({
   const [hospitals, setHospitals]       = useState([]);
   const [loading, setLoading]           = useState(false);
   const [locating, setLocating]         = useState(false);
-  const [searchTerm, setSearchTerm]     = useState(initialSearchTerm || '');
+  const [searchTerm, setSearchTerm]     = useState(
+    typeof initialSearchTerm === 'object' && initialSearchTerm !== null
+      ? (initialSearchTerm.query || '')
+      : (typeof initialSearchTerm === 'string' ? initialSearchTerm : '')
+  );
   const [specialty, setSpecialty]       = useState('');
   const [sortBy, setSortBy]             = useState('distance');
   const [selected, setSelected]         = useState(null);
 
   useEffect(() => {
     if (initialSearchTerm) {
-      setSearchTerm(initialSearchTerm);
+      setSearchTerm(
+        typeof initialSearchTerm === 'object' && initialSearchTerm !== null
+          ? (initialSearchTerm.query || '')
+          : (typeof initialSearchTerm === 'string' ? initialSearchTerm : '')
+      );
     }
   }, [initialSearchTerm]);
 

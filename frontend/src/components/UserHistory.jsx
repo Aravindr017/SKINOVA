@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   History, Calendar, Clock, CheckCircle2, AlertTriangle, XCircle,
   Camera, ChevronRight, Trash2, ShieldAlert, Sparkles, Search,
-  MessageSquare, Building2, MapPin, ArrowRight
+  MessageSquare, Building2, MapPin, ArrowRight, Eye, Bot
 } from 'lucide-react';
 
 export default function UserHistory({
@@ -220,68 +220,90 @@ export default function UserHistory({
                   </p>
                 </div>
               ) : (
-                searchHistory.map(item => (
-                  <div key={item.id} className="card p-3.5 sm:p-4 flex items-center justify-between gap-3 card-interactive group">
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div
-                        className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                        style={{
-                          background: item.type === 'hospital_search' ? '#F0F9FF' : '#F0FDFA',
-                          color: item.type === 'hospital_search' ? '#0284C7' : '#0D9488',
-                        }}
-                      >
-                        {item.type === 'hospital_search' ? <Building2 size={18}/> : <MessageSquare size={18}/>}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-semibold text-slate-900 truncate">
-                            {item.query}
-                          </p>
-                          <span
-                            className="badge text-[10px] py-0.5"
+                searchHistory.map(item => {
+                  const isConsultation = item.type !== 'hospital_search';
+                  return (
+                    <div key={item.id} className="card p-3.5 sm:p-4 card-interactive group transition-all">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3 min-w-0 flex-1">
+                          <div
+                            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
                             style={{
-                              background: item.type === 'hospital_search' ? '#E0F2FE' : '#CCFBF1',
-                              color: item.type === 'hospital_search' ? '#0369A1' : '#0F766E',
+                              background: item.type === 'hospital_search' ? '#F0F9FF' : '#F0FDFA',
+                              color: item.type === 'hospital_search' ? '#0284C7' : '#0D9488',
                             }}
                           >
-                            {item.type === 'hospital_search' ? 'Clinic Search' : 'AI Consultation'}
-                          </span>
+                            {item.type === 'hospital_search' ? <Building2 size={18}/> : <MessageSquare size={18}/>}
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-sm font-semibold text-slate-900 break-words">
+                                {item.query}
+                              </p>
+                              <span
+                                className="badge text-[10px] py-0.5"
+                                style={{
+                                  background: item.type === 'hospital_search' ? '#E0F2FE' : '#CCFBF1',
+                                  color: item.type === 'hospital_search' ? '#0369A1' : '#0F766E',
+                                }}
+                              >
+                                {item.type === 'hospital_search' ? 'Clinic Search' : 'AI Consultation'}
+                              </span>
+                            </div>
+
+                            <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
+                              <Clock size={11} className="flex-shrink-0"/>
+                              {new Date(item.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                              {item.location && <span>· 📍 {item.location}</span>}
+                            </p>
+
+                            {/* Previous AI Answer preview if available */}
+                            {isConsultation && item.answer && (
+                              <p className="text-xs text-slate-600 mt-2 line-clamp-2 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                                <span className="font-semibold text-teal-700">AI Response: </span>
+                                {item.answer.replace(/[*#]/g, '').slice(0, 160)}...
+                              </p>
+                            )}
+                          </div>
                         </div>
-                        <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
-                          <Clock size={11} className="flex-shrink-0"/>
-                          {new Date(item.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                          {item.location && <span>· 📍 {item.location}</span>}
-                        </p>
+
+                        {/* Action buttons */}
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          {onSelectSearchQuery && (
+                            <button
+                              type="button"
+                              className="btn btn-sm text-xs flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                              style={{
+                                background: item.type === 'hospital_search' ? '#F0F9FF' : '#F0FDFA',
+                                color: item.type === 'hospital_search' ? '#0284C7' : '#0D9488',
+                                border: `1px solid ${item.type === 'hospital_search' ? '#BAE6FD' : '#99F6E4'}`,
+                              }}
+                              onClick={() => onSelectSearchQuery(item)}
+                              title={item.type === 'hospital_search' ? 'View nearby clinics & doctors' : 'View your previous chat conversation'}
+                            >
+                              <Eye size={13} />
+                              <span className="font-semibold">
+                                {item.type === 'hospital_search' ? 'View Clinics' : 'View'}
+                              </span>
+                            </button>
+                          )}
+
+                          {onDeleteSearch && (
+                            <button
+                              type="button"
+                              className="btn btn-icon btn-sm btn-ghost text-slate-400 hover:text-red-600 opacity-60 group-hover:opacity-100 transition-opacity"
+                              title="Delete from history"
+                              onClick={() => onDeleteSearch(item.id)}
+                            >
+                              <Trash2 size={14}/>
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      {onSelectSearchQuery && (
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-ghost text-xs text-teal-700 hover:bg-teal-50 flex items-center gap-1"
-                          onClick={() => onSelectSearchQuery(item)}
-                          title="Ask or search again"
-                        >
-                          <span>Ask Again</span>
-                          <ArrowRight size={12}/>
-                        </button>
-                      )}
-
-                      {onDeleteSearch && (
-                        <button
-                          type="button"
-                          className="btn btn-icon btn-sm btn-ghost text-slate-400 hover:text-red-600 opacity-60 group-hover:opacity-100 transition-opacity"
-                          title="Delete from history"
-                          onClick={() => onDeleteSearch(item.id)}
-                        >
-                          <Trash2 size={14}/>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           )}

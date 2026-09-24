@@ -237,12 +237,19 @@ export function App() {
     });
   }, [currentUser]);
 
-  const handleSelectSearchQuery = useCallback((query, type) => {
+  const handleSelectSearchQuery = useCallback((queryOrItem, explicitType) => {
+    const isObj = typeof queryOrItem === 'object' && queryOrItem !== null;
+    const query = isObj ? (queryOrItem.query || '') : (queryOrItem || '');
+    const type = isObj ? (queryOrItem.type || explicitType) : explicitType;
+    const answer = isObj ? (queryOrItem.answer || '') : '';
+    const sources = isObj ? (queryOrItem.sources || []) : [];
+    const date = isObj ? queryOrItem.date : new Date().toISOString();
+
     if (type === 'hospital_search') {
       setActiveHospitalQuery(query);
       setActiveTab('hospitals');
     } else {
-      setActiveChatQuery(query);
+      setActiveChatQuery({ query, answer, sources, date });
       setActiveTab('chat');
     }
   }, []);
