@@ -280,11 +280,11 @@ export default function UserHistory({
                                 border: `1px solid ${item.type === 'hospital_search' ? '#BAE6FD' : '#99F6E4'}`,
                               }}
                               onClick={() => onSelectSearchQuery(item)}
-                              title={item.type === 'hospital_search' ? 'View nearby clinics & doctors' : 'View your previous chat conversation'}
+                              title={item.type === 'hospital_search' ? 'View nearby clinics & doctors' : 'View this chat conversation history'}
                             >
-                              <Eye size={13} />
+                              {item.type === 'hospital_search' ? <Building2 size={13} /> : <MessageSquare size={13} />}
                               <span className="font-semibold">
-                                {item.type === 'hospital_search' ? 'View Clinics' : 'View'}
+                                {item.type === 'hospital_search' ? 'View Clinics' : 'View Chat'}
                               </span>
                             </button>
                           )}

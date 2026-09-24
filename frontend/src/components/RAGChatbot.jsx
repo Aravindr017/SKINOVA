@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, Loader2, RotateCcw, Shield, AlertTriangle } from 'lucide-react';
+import { Send, Bot, Loader2, RotateCcw, Shield, AlertTriangle, Clock, Sparkles } from 'lucide-react';
 import { api, sanitizeText, isPromptInjection } from '../services/api';
 
 const SUGGESTIONS = [
@@ -102,14 +102,65 @@ export default function RAGChatbot({ currentUser, lastResult, onRecordSearch, in
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
-  const [input, setInput]     = useState(typeof initialQuery === 'string' ? initialQuery : (initialQuery?.query || ''));
-  const [loading, setLoading] = useState(false);
-  const [blocked, setBlocked] = useState(false);
+  const [input, setInput]           = useState('');
+  const [loading, setLoading]       = useState(false);
+  const [blocked, setBlocked]       = useState(false);
+  const [historySession, setHistorySession] = useState(null);
   const bottomRef = useRef();
   const inputRef  = useRef();
 
+  // Helper to fetch response for older history items without stored answers
+  const autoFetchAnswer = async (queryText) => {
+    setLoading(true);
+    try {
+      const data = await api.chat({
+        query: queryText,
+        predictedClass: lastResult?.predicted_class || null,
+        confidence: lastResult?.confidence || null,
+        topK: 4
+      });
+
+      const rawSources = (data.sources || []).map(s => {
+        if (typeof s === 'string') return s;
+        const disease = s?.chunk?.disease;
+        const title = s?.chunk?.title;
+        const sourceName = s?.chunk?.source;
+        if (disease && title && disease !== title) return `${disease} — ${title}`;
+        return title || disease || s?.chunk?.filename || sourceName || '';
+      }).filter(Boolean);
+      const sources = [...new Set(rawSources)];
+
+      const aiMsg = {
+        id: Date.now() + 1,
+        role: 'ai',
+        text: data.answer || 'I found some relevant medical information. Please consult a dermatologist for personalized advice.',
+        sources: sources,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, aiMsg]);
+
+      // Cache this answer in user activity history
+      onRecordSearch?.(queryText, 'ai_consultation', {
+        answer: aiMsg.text,
+        sources: sources,
+      });
+    } catch (err) {
+      setMessages(prev => [...prev, {
+        id: Date.now() + 1,
+        role: 'ai',
+        text: 'Could not load response from AI service. Please ensure the backend is connected.',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!initialQuery) return;
+
+    // Never place the historical question in the input textarea - keep it empty like ChatGPT!
+    setInput('');
 
     if (typeof initialQuery === 'object' && initialQuery !== null) {
       const q = typeof initialQuery.query === 'string' ? initialQuery.query : '';
@@ -118,36 +169,46 @@ export default function RAGChatbot({ currentUser, lastResult, onRecordSearch, in
       const timestamp = initialQuery.date
         ? new Date(initialQuery.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const fullDate = initialQuery.date
+        ? new Date(initialQuery.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+        : 'Saved Chat';
 
-      if (ans && q) {
-        // Restore full previous conversation for viewing
+      setHistorySession({
+        query: q,
+        date: fullDate,
+      });
+
+      if (Array.isArray(initialQuery.messages) && initialQuery.messages.length > 0) {
+        setMessages(initialQuery.messages);
+      } else if (ans && q) {
+        // Load the chat history conversation thread directly like ChatGPT
         setMessages([
           {
             id: 1,
-            role: 'ai',
-            text: "Hello! I'm SKINOVA's AI dermatology consultant. Below is your previous consultation from your activity history:",
-            time: timestamp
-          },
-          {
-            id: 2,
             role: 'user',
             text: q,
             time: timestamp
           },
           {
-            id: 3,
+            id: 2,
             role: 'ai',
             text: ans,
             sources: sources,
             time: timestamp
           }
         ]);
-        setInput('');
       } else if (q) {
-        setInput(q);
+        // If older item without stored answer, display question and retrieve response
+        setMessages([
+          {
+            id: 1,
+            role: 'user',
+            text: q,
+            time: timestamp
+          }
+        ]);
+        autoFetchAnswer(q);
       }
-    } else if (typeof initialQuery === 'string') {
-      setInput(initialQuery);
     }
   }, [initialQuery]);
 
@@ -237,16 +298,20 @@ export default function RAGChatbot({ currentUser, lastResult, onRecordSearch, in
 
   const handleKey = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
 
-  const resetChat = () => setMessages([{
-    id: 1, role: 'ai',
-    text: "Hello! I'm SKINOVA's AI consultant. How can I help you today?",
-    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  }]);
+  const resetChat = () => {
+    setHistorySession(null);
+    setInput('');
+    setMessages([{
+      id: 1, role: 'ai',
+      text: "Hello! I'm SKINOVA's AI consultant. How can I help you today?",
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    }]);
+  };
 
   return (
     <div className="flex flex-col h-[calc(100dvh-10.5rem)] sm:h-[calc(100dvh-8rem)] max-h-[720px] animate-fade-up">
       {/* Header */}
-      <div className="card p-3 sm:p-4 flex items-center gap-2.5 sm:gap-3 mb-3 sm:mb-4 flex-shrink-0">
+      <div className="card p-3 sm:p-4 flex items-center gap-2.5 sm:gap-3 mb-2.5 sm:mb-3 flex-shrink-0">
         <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center relative flex-shrink-0"
              style={{background:'linear-gradient(135deg,#CCFBF1,#0D9488)'}}>
           <Bot size={18} className="text-white"/>
@@ -261,11 +326,34 @@ export default function RAGChatbot({ currentUser, lastResult, onRecordSearch, in
             <Shield size={11} className="text-teal-600"/>
             <span className="text-xs text-teal-700 font-semibold">Protected</span>
           </div>
-          <button className="btn btn-sm btn-ghost text-xs px-2 sm:px-3" onClick={resetChat} title="Reset chat history">
-            <RotateCcw size={13}/> <span className="hidden sm:inline">Reset</span>
+          <button
+            className="btn btn-sm btn-ghost text-xs px-2.5 sm:px-3 text-teal-700 hover:bg-teal-50 flex items-center gap-1 border border-teal-100"
+            onClick={resetChat}
+            title="Start new conversation"
+          >
+            <RotateCcw size={13}/> <span className="hidden xs:inline sm:inline">New Chat</span>
           </button>
         </div>
       </div>
+
+      {/* History Session Banner (when viewing chat from history) */}
+      {historySession && (
+        <div className="flex items-center justify-between px-3.5 py-2 mb-2 rounded-xl bg-teal-50/80 border border-teal-200/80 text-xs text-slate-700 flex-shrink-0 animate-fade-up">
+          <div className="flex items-center gap-2 min-w-0">
+            <Clock size={13} className="text-teal-600 flex-shrink-0" />
+            <span className="font-semibold text-teal-900 flex-shrink-0">Chat History:</span>
+            <span className="text-slate-600 truncate">{historySession.date}</span>
+          </div>
+          <button
+            onClick={resetChat}
+            className="btn btn-sm btn-ghost text-[11px] text-teal-700 hover:bg-teal-100 py-0.5 px-2 h-auto flex items-center gap-1 font-semibold flex-shrink-0"
+            title="Start a new chat conversation"
+          >
+            <Sparkles size={11} className="text-teal-600" />
+            <span>New Chat</span>
+          </button>
+        </div>
+      )}
 
       {/* Context card if scan done */}
       {lastResult && (
@@ -327,8 +415,8 @@ export default function RAGChatbot({ currentUser, lastResult, onRecordSearch, in
         <div ref={bottomRef}/>
       </div>
 
-      {/* Suggestions */}
-      {messages.length <= 2 && (
+      {/* Suggestions (only in fresh new chat) */}
+      {!historySession && messages.length <= 1 && (
         <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 mb-2 sm:mb-3 flex-nowrap">
           {SUGGESTIONS.map(s => (
             <button key={s} onClick={() => sendMessage(s)}
@@ -349,7 +437,7 @@ export default function RAGChatbot({ currentUser, lastResult, onRecordSearch, in
         <textarea
           ref={inputRef}
           className="flex-1 resize-none text-xs sm:text-sm text-slate-800 outline-none bg-transparent placeholder-slate-400 max-h-32"
-          placeholder="Ask about skin conditions, treatments, prevention…"
+          placeholder={historySession ? "Reply to this chat or ask a follow-up…" : "Ask about skin conditions, treatments, prevention…"}
           rows={1}
           value={typeof input === 'string' ? input : ''}
           onChange={e => setInput(e.target.value)}

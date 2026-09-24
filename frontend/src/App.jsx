@@ -243,13 +243,15 @@ export function App() {
     const type = isObj ? (queryOrItem.type || explicitType) : explicitType;
     const answer = isObj ? (queryOrItem.answer || '') : '';
     const sources = isObj ? (queryOrItem.sources || []) : [];
+    const messages = isObj ? (queryOrItem.messages || null) : null;
     const date = isObj ? queryOrItem.date : new Date().toISOString();
+    const id = isObj ? queryOrItem.id : Date.now();
 
     if (type === 'hospital_search') {
       setActiveHospitalQuery(query);
       setActiveTab('hospitals');
     } else {
-      setActiveChatQuery({ query, answer, sources, date });
+      setActiveChatQuery({ id, query, answer, sources, messages, date });
       setActiveTab('chat');
     }
   }, []);
