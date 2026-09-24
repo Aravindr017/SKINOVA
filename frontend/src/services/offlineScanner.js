@@ -4,7 +4,8 @@
 // Zero Network Calls • 100% Patient Privacy • Airplane-Mode Ready
 // ==========================================
 
-import * as ort from 'onnxruntime-web';
+import * as ort from 'onnxruntime-web/wasm';
+
 
 // Disease metadata matching clinical classification
 export const DISEASE_METADATA = {
@@ -72,21 +73,27 @@ export async function getOfflineSession() {
   if (sessionLoadingPromise) return sessionLoadingPromise;
 
   sessionLoadingPromise = (async () => {
-    // 1. First attempt: Origin-qualified local self-hosted WASM (/wasm/)
-    // Using full origin URL prevents Vite dev server from intercepting it as a source-code module import
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const localWasmPath = origin ? `${origin}/wasm/` : '/wasm/';
     const modelUrl = '/models/skinova_efficientnetb0_int8.onnx';
 
+    // Configure WebAssembly execution: Single-threaded SIMD (best browser compatibility, zero worker pthread overhead)
+    ort.env.wasm.numThreads = 1;
+    ort.env.wasm.simd = true;
+
+    // 1. First attempt: Local self-hosted WASM + model ArrayBuffer
     try {
       ort.env.wasm.wasmPaths = localWasmPath;
-      ort.env.wasm.numThreads = 1;
-      ort.env.wasm.simd = true;
 
-      const session = await ort.InferenceSession.create(modelUrl, {
+      const modelRes = await fetch(modelUrl);
+      if (!modelRes.ok) throw new Error(`HTTP ${modelRes.status} fetching ${modelUrl}`);
+      const modelBuffer = await modelRes.arrayBuffer();
+
+      const session = await ort.InferenceSession.create(modelBuffer, {
         executionProviders: ['wasm'],
         graphOptimizationLevel: 'all',
       });
+      console.log('[SKINOVA Offline Engine] ONNX WebAssembly session initialized successfully.');
       cachedSession = session;
       return session;
     } catch (localErr) {
@@ -94,10 +101,13 @@ export async function getOfflineSession() {
       // 2. Second attempt: Official ONNX Runtime Web CDN fallback
       try {
         ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.30.0/dist/';
-        const session = await ort.InferenceSession.create(modelUrl, {
+        const modelRes = await fetch(modelUrl);
+        const modelBuffer = await modelRes.arrayBuffer();
+        const session = await ort.InferenceSession.create(modelBuffer, {
           executionProviders: ['wasm'],
           graphOptimizationLevel: 'all',
         });
+        console.log('[SKINOVA Offline Engine] CDN fallback ONNX session initialized successfully.');
         cachedSession = session;
         return session;
       } catch (cdnErr) {
