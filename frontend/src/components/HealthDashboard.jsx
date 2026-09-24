@@ -40,11 +40,11 @@ function RingProgress({ pct, color, size = 80, stroke = 7, children }) {
 }
 
 export default function HealthDashboard({ currentUser, onLoginRequest }) {
-  const [tab, setTab]             = useState('today');
-  const [logging, setLogging]     = useState(false);
-  const [saving, setSaving]       = useState(false);
-  const [logs, setLogs]           = useState([]);
-  const [summary, setSummary]     = useState(null);
+  const [tab, setTab] = useState('today');
+  const [logging, setLogging] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [logs, setLogs] = useState([]);
+  const [summary, setSummary] = useState(null);
 
   // Health Integration States
   const [connectedApp, setConnectedApp] = useState(() => {
@@ -52,20 +52,20 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
     return localStorage.getItem(`skinova_connected_health_app_${currentUser.id}`) || 'auto';
   });
   const [showConnectModal, setShowConnectModal] = useState(false);
-  const [modalTab, setModalTab]                 = useState('auto'); // 'auto' | 'screen' | 'file'
-  const [isSyncing, setIsSyncing]               = useState(false);
-  const [fileParsing, setFileParsing]           = useState(false);
-  const [lastSyncTime, setLastSyncTime]         = useState(() => {
+  const [modalTab, setModalTab] = useState('auto'); // 'auto' | 'screen' | 'file'
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [fileParsing, setFileParsing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState(() => {
     return localStorage.getItem('skinova_last_health_sync') || null;
   });
 
-  const [validicInfo, setValidicInfo]           = useState(null);
+  const [validicInfo, setValidicInfo] = useState(null);
   const [isValidicLoading, setIsValidicLoading] = useState(false);
 
   // Live Hardware Sensor Pedometer States (iOS Safari & Android Chrome)
   const [liveSensorActive, setLiveSensorActive] = useState(false);
-  const [liveSteps, setLiveSteps]               = useState(0);
-  const [sensorPulse, setSensorPulse]           = useState(false);
+  const [liveSteps, setLiveSteps] = useState(0);
+  const [sensorPulse, setSensorPulse] = useState(false);
   const [motionPermissionState, setMotionPermissionState] = useState('prompt');
   const lastStepTimeRef = useRef(0);
 
@@ -92,7 +92,7 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
       try {
         const parsed = JSON.parse(savedGoals);
         setGoals(g => ({ ...g, ...parsed }));
-      } catch {}
+      } catch { }
     }
   }, [currentUser]);
 
@@ -108,7 +108,7 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
           (l.steps === 7800 && l.calories_burned === 375) ||
           (l.steps === 8400 && l.calories_burned === 410) ||
           (l.notes?.includes('Auto-synced from') && l.workout_minutes === 42) ||
-          (l.notes?.includes('Auto-synchronized with Apple Health & HealthKit sensors.'))
+          (l.notes?.includes('Auto-synchronized with health monitoring platform.'))
         ));
         setLogs(genuineLogs);
         if (genuineLogs.length !== parsed.length) {
@@ -127,7 +127,7 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
     try {
       const { data } = await api.get(`/api/health/summary/${currentUser.id}`);
       if (data.summary) setSummary(data.summary);
-    } catch {}
+    } catch { }
   };
 
   const fetchValidicStatus = async () => {
@@ -151,10 +151,10 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
 
   // Genuine entry for today (if none exists yet, today starts at 0!)
   const todayEntry = logs.find(l => l.date === TODAY) || null;
-  const latestLog  = todayEntry || {};
+  const latestLog = todayEntry || {};
 
-  const stepPct  = goals.steps > 0 ? Math.min(100, Math.round((parseInt(latestLog.steps || 0) / goals.steps) * 100)) : 0;
-  const calPct   = goals.calories > 0 ? Math.min(100, Math.round((parseFloat(latestLog.calories_burned || 0) / goals.calories) * 100)) : 0;
+  const stepPct = goals.steps > 0 ? Math.min(100, Math.round((parseInt(latestLog.steps || 0) / goals.steps) * 100)) : 0;
+  const calPct = goals.calories > 0 ? Math.min(100, Math.round((parseFloat(latestLog.calories_burned || 0) / goals.calories) * 100)) : 0;
   const waterPct = goals.water > 0 ? Math.min(100, Math.round((parseInt(latestLog.water_ml || 0) / goals.water) * 100)) : 0;
   const sleepPct = goals.sleep > 0 ? Math.min(100, Math.round((parseFloat(latestLog.sleep_hours || 0) / goals.sleep) * 100)) : 0;
 
@@ -275,7 +275,7 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
       logged_at: now.toISOString(),
     };
 
-    api.post('/api/health/log', entry).catch(() => {});
+    api.post('/api/health/log', entry).catch(() => { });
     const newLogs = [entry, ...logs.filter(l => l.date !== TODAY)];
     setLogs(newLogs);
     localStorage.setItem(`skinova_health_${currentUser.id}`, JSON.stringify(newLogs.slice(0, 30)));
@@ -284,7 +284,7 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
       userId: currentUser.id,
       email: currentUser.email,
       healthLogs: newLogs.slice(0, 30),
-    }).catch(() => {});
+    }).catch(() => { });
 
     const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     setLastSyncTime(timeStr);
@@ -396,12 +396,12 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
       setLogs(mergedLogs);
       if (currentUser) {
         localStorage.setItem(`skinova_health_${currentUser.id}`, JSON.stringify(mergedLogs.slice(0, 30)));
-        api.post('/api/health/log', targetEntry).catch(() => {});
+        api.post('/api/health/log', targetEntry).catch(() => { });
         api.syncUserActivity?.({
           userId: currentUser.id,
           email: currentUser.email,
           healthLogs: mergedLogs.slice(0, 30),
-        }).catch(() => {});
+        }).catch(() => { });
       }
 
       const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -456,20 +456,20 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
     const entry = {
       user_id: currentUser.id,
       date: TODAY,
-      steps:           stepsNum,
+      steps: stepsNum,
       calories_burned: caloriesNum,
-      water_ml:        parseInt(todayLog.water_ml) || 0,
-      heart_rate_bpm:  parseInt(todayLog.heart_rate_bpm) || null,
-      sleep_hours:     parseFloat(todayLog.sleep_hours) || null,
-      workout_type:    todayLog.workout_type || null,
+      water_ml: parseInt(todayLog.water_ml) || 0,
+      heart_rate_bpm: parseInt(todayLog.heart_rate_bpm) || null,
+      sleep_hours: parseFloat(todayLog.sleep_hours) || null,
+      workout_type: todayLog.workout_type || null,
       workout_minutes: parseInt(todayLog.workout_minutes) || Math.round(stepsNum / 100),
-      mood:            todayLog.mood || null,
-      notes:           todayLog.notes || '',
-      source:          'Manual Log',
+      mood: todayLog.mood || null,
+      notes: todayLog.notes || '',
+      source: 'Manual Log',
     };
     try {
       await api.post('/api/health/log', entry);
-    } catch {}
+    } catch { }
 
     const newLogs = [{ ...entry, logged_at: new Date().toISOString() }, ...logs.filter(l => l.date !== TODAY)];
     setLogs(newLogs);
@@ -478,7 +478,7 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
       userId: currentUser.id,
       email: currentUser.email,
       healthLogs: newLogs.slice(0, 30),
-    }).catch(() => {});
+    }).catch(() => { });
     setSaving(false);
     setLogging(false);
     fetchSummary();
@@ -486,9 +486,9 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
 
   // 7-day chart data
   const chartData = logs.slice(0, 7).reverse().map(l => ({
-    date:  new Date(l.date).toLocaleDateString('en', { weekday: 'short' }),
+    date: new Date(l.date).toLocaleDateString('en', { weekday: 'short' }),
     steps: l.steps || 0,
-    cal:   l.calories_burned || 0,
+    cal: l.calories_burned || 0,
     water: Math.round((l.water_ml || 0) / 100) / 10,
   }));
 
@@ -496,7 +496,7 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
     return (
       <div className="animate-fade-up">
         <div className="card p-10 text-center">
-          <Heart size={32} className="text-slate-300 mx-auto mb-3"/>
+          <Heart size={32} className="text-slate-300 mx-auto mb-3" />
           <h2 className="text-xl font-bold text-slate-800 mb-2">Health & Fitness Tracker</h2>
           <p className="text-slate-500 text-sm mb-5">Sign in to track your daily health metrics and sync with your phone or fitness devices.</p>
           <button className="btn btn-primary" onClick={onLoginRequest}>Sign In</button>
@@ -526,7 +526,7 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
               disabled={isSyncing || isValidicLoading}
               title="Sync latest steps and calories from your mobile app"
             >
-              <RefreshCw size={13} className={isSyncing || isValidicLoading ? 'animate-spin text-teal-600' : ''}/>
+              <RefreshCw size={13} className={isSyncing || isValidicLoading ? 'animate-spin text-teal-600' : ''} />
               <span>{isSyncing || isValidicLoading ? 'Syncing…' : 'Sync Now'}</span>
             </button>
           ) : (
@@ -534,23 +534,22 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
               className="btn btn-sm btn-secondary flex items-center gap-1.5"
               onClick={() => { setModalTab('auto'); setShowConnectModal(true); }}
             >
-              <Smartphone size={14} className="text-teal-600"/> Connect Device
+              <Smartphone size={14} className="text-teal-600" /> Connect Device
             </button>
           )}
 
           <button className="btn btn-primary btn-sm" onClick={() => setLogging(true)}>
-            <Plus size={14}/> Log Manually
+            <Plus size={14} /> Log Manually
           </button>
         </div>
       </div>
 
       {/* Sync Feedback Alert */}
       {syncFeedback && (
-        <div className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 text-xs animate-fade-in ${
-          syncFeedback.type === 'success' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' :
-          syncFeedback.type === 'warning' ? 'bg-amber-50 text-amber-800 border-amber-200' :
-          'bg-rose-50 text-rose-800 border-rose-200'
-        }`}>
+        <div className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 text-xs animate-fade-in ${syncFeedback.type === 'success' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' :
+            syncFeedback.type === 'warning' ? 'bg-amber-50 text-amber-800 border-amber-200' :
+              'bg-rose-50 text-rose-800 border-rose-200'
+          }`}>
           <div className="flex items-center gap-2">
             {syncFeedback.type === 'success' ? <CheckCircle2 size={15} className="text-emerald-600 flex-shrink-0" /> : <AlertCircle size={15} className="flex-shrink-0" />}
             <span className="font-medium">{syncFeedback.text}</span>
@@ -561,7 +560,7 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
 
       {/* Connected Health Tracking App Status Banner (Clean, Professional) */}
       <div className="card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border shadow-xs"
-           style={{ background: connectedApp ? '#F0FDF4' : '#F8FAFC', borderColor: connectedApp ? '#86EFAC' : '#E2E8F0' }}>
+        style={{ background: connectedApp ? '#F0FDF4' : '#F8FAFC', borderColor: connectedApp ? '#86EFAC' : '#E2E8F0' }}>
         <div className="flex items-center gap-3">
           <div
             className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-xs text-white"
@@ -572,16 +571,16 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
             }}
           >
             {connectedApp ? (
-              <Smartphone size={20}/>
+              <Smartphone size={20} />
             ) : (
-              <Smartphone size={18} className="text-slate-500"/>
+              <Smartphone size={18} className="text-slate-500" />
             )}
           </div>
           <div>
             <div className="flex items-center gap-2">
               <p className="text-sm font-bold text-slate-900">
                 {connectedApp
-                  ? (isAppleDevice ? 'Apple Health & Mobile Devices' : 'Mobile Health Tracking')
+                  ? (isAppleDevice ? 'Validic Health Monitoring Platform' : 'Mobile Health Tracking')
                   : 'Connect Mobile Health App'}
               </p>
               {connectedApp && (
@@ -606,14 +605,14 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
                 onClick={handleOpenDevicePortal}
                 title="Pair Apple Health, Google Fit, Garmin, or Fitbit"
               >
-                <Link2 size={12}/> Connect Device
+                <Link2 size={12} /> Connect Device
               </button>
               <button
                 className="btn btn-sm btn-primary text-xs flex items-center gap-1"
                 onClick={handleSyncCloud}
                 disabled={isValidicLoading}
               >
-                <RefreshCw size={12} className={isValidicLoading ? 'animate-spin' : ''}/>
+                <RefreshCw size={12} className={isValidicLoading ? 'animate-spin' : ''} />
                 {isValidicLoading ? 'Syncing…' : 'Sync Now'}
               </button>
               <button
@@ -628,7 +627,7 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
               className="btn btn-sm btn-primary text-xs flex items-center gap-1.5"
               onClick={() => { setModalTab('auto'); setShowConnectModal(true); }}
             >
-              <Zap size={13}/> Set Up Sync
+              <Zap size={13} /> Set Up Sync
             </button>
           )}
         </div>
@@ -639,15 +638,13 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="relative">
-              <div className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all ${
-                liveSensorActive ? 'bg-teal-600 text-white shadow-md shadow-teal-500/30' : 'bg-white border border-teal-200 text-teal-700'
-              }`}>
-                <Footprints size={20} className={liveSensorActive ? 'animate-bounce' : ''}/>
+              <div className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all ${liveSensorActive ? 'bg-teal-600 text-white shadow-md shadow-teal-500/30' : 'bg-white border border-teal-200 text-teal-700'
+                }`}>
+                <Footprints size={20} className={liveSensorActive ? 'animate-bounce' : ''} />
               </div>
               {liveSensorActive && (
-                <span className={`absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white transition-all ${
-                  sensorPulse ? 'bg-emerald-400 scale-125' : 'bg-teal-500'
-                }`} />
+                <span className={`absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white transition-all ${sensorPulse ? 'bg-emerald-400 scale-125' : 'bg-teal-500'
+                  }`} />
               )}
             </div>
             <div>
@@ -655,9 +652,8 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
                 <p className="text-sm font-bold text-slate-900">
                   Live Phone Motion Pedometer
                 </p>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                  liveSensorActive ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
-                }`}>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${liveSensorActive ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
+                  }`}>
                   {liveSensorActive ? '● Active' : '○ Inactive'}
                 </span>
               </div>
@@ -683,13 +679,13 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
                   disabled={liveSteps === 0}
                   title="Add live recorded steps to today's log"
                 >
-                  <Check size={13}/> Save Steps
+                  <Check size={13} /> Save Steps
                 </button>
                 <button
                   className="btn btn-sm btn-ghost text-xs text-slate-600 hover:bg-slate-100"
                   onClick={handleToggleLiveSensor}
                 >
-                  <Pause size={13}/> Stop
+                  <Pause size={13} /> Stop
                 </button>
               </>
             ) : (
@@ -697,7 +693,7 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
                 className="btn btn-sm btn-secondary text-xs flex items-center gap-1.5 font-semibold text-teal-800 border-teal-300 hover:bg-teal-50"
                 onClick={handleToggleLiveSensor}
               >
-                <Play size={13} className="text-teal-600 fill-teal-600"/> Start Live Pedometer
+                <Play size={13} className="text-teal-600 fill-teal-600" /> Start Live Pedometer
               </button>
             )}
           </div>
@@ -707,13 +703,13 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
       {/* Tabs */}
       <div className="tab-nav">
         <button className={`tab-btn ${tab === 'today' ? 'active' : ''}`} onClick={() => setTab('today')}>
-          <Activity size={14}/> Today's Activity
+          <Activity size={14} /> Today's Activity
         </button>
         <button className={`tab-btn ${tab === 'trends' ? 'active' : ''}`} onClick={() => setTab('trends')}>
-          <TrendingUp size={14}/> 7-Day Trends
+          <TrendingUp size={14} /> 7-Day Trends
         </button>
         <button className={`tab-btn ${tab === 'summary' ? 'active' : ''}`} onClick={() => setTab('summary')}>
-          <Target size={14}/> Goal Targets
+          <Target size={14} /> Goal Targets
         </button>
       </div>
 
@@ -723,7 +719,7 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
           {!todayEntry && (
             <div className="card p-3.5 bg-amber-50/80 border border-amber-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-900">
               <div className="flex items-center gap-2">
-                <ShieldCheck size={16} className="text-amber-700 flex-shrink-0"/>
+                <ShieldCheck size={16} className="text-amber-700 flex-shrink-0" />
                 <span>
                   <strong>Awaiting Today's Health Data:</strong> Activity rings display 0% until data is synced or logged for today ({TODAY}).
                 </span>
@@ -763,10 +759,10 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {[
-                { label: 'Steps',    pct: stepPct,  color: '#0D9488', val: latestLog.steps || 0,            target: goals.steps,    unit: '',     icon: Footprints },
-                { label: 'Calories', pct: calPct,   color: '#F43F5E', val: latestLog.calories_burned || 0, target: goals.calories, unit: 'kcal', icon: Flame },
-                { label: 'Hydration',pct: waterPct, color: '#06B6D4', val: latestLog.water_ml || 0,        target: goals.water,    unit: 'ml',   icon: Droplets },
-                { label: 'Sleep',    pct: sleepPct, color: '#7C3AED', val: latestLog.sleep_hours || 0,     target: goals.sleep,    unit: 'hrs',  icon: Moon },
+                { label: 'Steps', pct: stepPct, color: '#0D9488', val: latestLog.steps || 0, target: goals.steps, unit: '', icon: Footprints },
+                { label: 'Calories', pct: calPct, color: '#F43F5E', val: latestLog.calories_burned || 0, target: goals.calories, unit: 'kcal', icon: Flame },
+                { label: 'Hydration', pct: waterPct, color: '#06B6D4', val: latestLog.water_ml || 0, target: goals.water, unit: 'ml', icon: Droplets },
+                { label: 'Sleep', pct: sleepPct, color: '#7C3AED', val: latestLog.sleep_hours || 0, target: goals.sleep, unit: 'hrs', icon: Moon },
               ].map(m => (
                 <div key={m.label} className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-slate-50/70 border border-slate-100">
                   <RingProgress pct={m.pct} color={m.color} size={84} stroke={7}>
@@ -793,12 +789,12 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
           {/* Today's Data Metrics Grid */}
           <div className="stats-grid">
             {[
-              { icon: Footprints, label: 'Steps Count',    val: (latestLog.steps || 0).toLocaleString(), unit: 'steps', color: '#0D9488', bg: '#F0FDFA' },
-              { icon: Flame,      label: 'Active Energy',  val: latestLog.calories_burned || 0,         unit: 'kcal',  color: '#F43F5E', bg: '#FFF1F2' },
-              { icon: Droplets,   label: 'Water Intake',   val: latestLog.water_ml || 0,                unit: 'ml',    color: '#06B6D4', bg: '#ECFEFF' },
-              { icon: Moon,       label: 'Sleep Duration', val: latestLog.sleep_hours || 0,             unit: 'hrs',   color: '#7C3AED', bg: '#F5F3FF' },
-              { icon: Heart,      label: 'Resting Heart',  val: latestLog.heart_rate_bpm ? `${latestLog.heart_rate_bpm}` : '--', unit: latestLog.heart_rate_bpm ? 'bpm' : '', color: '#E11D48', bg: '#FFF1F2' },
-              { icon: Dumbbell,   label: 'Workout Active', val: latestLog.workout_minutes || 0,         unit: 'min',   color: '#D97706', bg: '#FFFBEB' },
+              { icon: Footprints, label: 'Steps Count', val: (latestLog.steps || 0).toLocaleString(), unit: 'steps', color: '#0D9488', bg: '#F0FDFA' },
+              { icon: Flame, label: 'Active Energy', val: latestLog.calories_burned || 0, unit: 'kcal', color: '#F43F5E', bg: '#FFF1F2' },
+              { icon: Droplets, label: 'Water Intake', val: latestLog.water_ml || 0, unit: 'ml', color: '#06B6D4', bg: '#ECFEFF' },
+              { icon: Moon, label: 'Sleep Duration', val: latestLog.sleep_hours || 0, unit: 'hrs', color: '#7C3AED', bg: '#F5F3FF' },
+              { icon: Heart, label: 'Resting Heart', val: latestLog.heart_rate_bpm ? `${latestLog.heart_rate_bpm}` : '--', unit: latestLog.heart_rate_bpm ? 'bpm' : '', color: '#E11D48', bg: '#FFF1F2' },
+              { icon: Dumbbell, label: 'Workout Active', val: latestLog.workout_minutes || 0, unit: 'min', color: '#D97706', bg: '#FFFBEB' },
             ].map(s => (
               <div key={s.label} className="stat-card">
                 <div className="stat-icon" style={{ background: s.bg }}>
@@ -817,7 +813,7 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
             <div className="card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center text-teal-600">
-                  <Wind size={20}/>
+                  <Wind size={20} />
                 </div>
                 <div>
                   <p className="text-xs text-slate-400">Wellness Status & Mood</p>
@@ -843,13 +839,13 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
         <div className="space-y-4 animate-fade-up">
           {logs.length === 0 ? (
             <div className="card p-8 text-center text-slate-500 space-y-3">
-              <TrendingUp size={36} className="mx-auto text-slate-300"/>
+              <TrendingUp size={36} className="mx-auto text-slate-300" />
               <h3 className="text-base font-bold text-slate-700">No Activity History Yet</h3>
               <p className="text-sm max-w-sm mx-auto">
                 Once you sync your phone, upload an export file, or enter your daily activity, your 7-day progression charts will appear here.
               </p>
               <button className="btn btn-primary btn-sm mx-auto" onClick={() => { setModalTab('auto'); setShowConnectModal(true); }}>
-                <Plus size={14}/> Sync Activity
+                <Plus size={14} /> Sync Activity
               </button>
             </div>
           ) : (
@@ -858,11 +854,11 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
                 <h3 className="text-sm font-bold text-slate-800 mb-4 uppercase tracking-wider">Daily Steps Progression (7 Days)</h3>
                 <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9"/>
-                    <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#94A3B8' }} axisLine={false} tickLine={false}/>
-                    <YAxis tick={{ fontSize: 11, fill: '#94A3B8' }} axisLine={false} tickLine={false}/>
-                    <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #E2E8F0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.07)' }}/>
-                    <Bar dataKey="steps" fill="#0D9488" radius={[6, 6, 0, 0]}/>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
+                    <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#94A3B8' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: '#94A3B8' }} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #E2E8F0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.07)' }} />
+                    <Bar dataKey="steps" fill="#0D9488" radius={[6, 6, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -871,11 +867,11 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
                 <h3 className="text-sm font-bold text-slate-800 mb-4 uppercase tracking-wider">Active Calories Burned (kcal)</h3>
                 <ResponsiveContainer width="100%" height={200}>
                   <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9"/>
-                    <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#94A3B8' }} axisLine={false} tickLine={false}/>
-                    <YAxis tick={{ fontSize: 11, fill: '#94A3B8' }} axisLine={false} tickLine={false}/>
-                    <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #E2E8F0' }}/>
-                    <Line type="monotone" dataKey="cal" stroke="#F43F5E" strokeWidth={2.5} dot={{ r: 4, fill: '#F43F5E' }}/>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
+                    <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#94A3B8' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: '#94A3B8' }} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #E2E8F0' }} />
+                    <Line type="monotone" dataKey="cal" stroke="#F43F5E" strokeWidth={2.5} dot={{ r: 4, fill: '#F43F5E' }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -904,7 +900,7 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
                       <span>{item.curr} / {item.goal} {item.unit} ({pct}%)</span>
                     </div>
                     <div className="progress-bar h-2.5">
-                      <div className="progress-fill" style={{ width: `${pct}%`, background: item.color }}/>
+                      <div className="progress-fill" style={{ width: `${pct}%`, background: item.color }} />
                     </div>
                   </div>
                 );
@@ -924,7 +920,7 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center text-teal-600">
-                  <Smartphone size={20}/>
+                  <Smartphone size={20} />
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-slate-900" style={{ fontFamily: 'Outfit,sans-serif' }}>
@@ -934,7 +930,7 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
                 </div>
               </div>
               <button className="btn btn-icon btn-sm btn-ghost" onClick={() => setShowConnectModal(false)}>
-                <X size={18}/>
+                <X size={18} />
               </button>
             </div>
 
@@ -942,45 +938,41 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
             <div className="grid grid-cols-3 gap-2 text-xs">
               <button
                 type="button"
-                className={`p-2.5 rounded-xl border text-center transition-all ${
-                  modalTab === 'auto' ? 'border-teal-500 bg-teal-50/70 font-bold ring-2 ring-teal-500/20 text-teal-900' : 'border-slate-200 bg-white hover:border-slate-300 text-slate-700'
-                }`}
+                className={`p-2.5 rounded-xl border text-center transition-all ${modalTab === 'auto' ? 'border-teal-500 bg-teal-50/70 font-bold ring-2 ring-teal-500/20 text-teal-900' : 'border-slate-200 bg-white hover:border-slate-300 text-slate-700'
+                  }`}
                 onClick={() => setModalTab('auto')}
               >
-                <Smartphone size={16} className="mx-auto mb-1 text-teal-600"/>
+                <Smartphone size={16} className="mx-auto mb-1 text-teal-600" />
                 <span>Device Sync</span>
               </button>
 
               <button
                 type="button"
-                className={`p-2.5 rounded-xl border text-center transition-all ${
-                  modalTab === 'screen' ? 'border-teal-500 bg-teal-50/70 font-bold ring-2 ring-teal-500/20 text-teal-900' : 'border-slate-200 bg-white hover:border-slate-300 text-slate-700'
-                }`}
+                className={`p-2.5 rounded-xl border text-center transition-all ${modalTab === 'screen' ? 'border-teal-500 bg-teal-50/70 font-bold ring-2 ring-teal-500/20 text-teal-900' : 'border-slate-200 bg-white hover:border-slate-300 text-slate-700'
+                  }`}
                 onClick={() => setModalTab('screen')}
               >
-                <Footprints size={16} className="mx-auto mb-1 text-sky-600"/>
+                <Footprints size={16} className="mx-auto mb-1 text-sky-600" />
                 <span>Quick Entry</span>
               </button>
 
               <button
                 type="button"
-                className={`p-2.5 rounded-xl border text-center transition-all ${
-                  modalTab === 'file' ? 'border-teal-500 bg-teal-50/70 font-bold ring-2 ring-teal-500/20 text-teal-900' : 'border-slate-200 bg-white hover:border-slate-300 text-slate-700'
-                }`}
+                className={`p-2.5 rounded-xl border text-center transition-all ${modalTab === 'file' ? 'border-teal-500 bg-teal-50/70 font-bold ring-2 ring-teal-500/20 text-teal-900' : 'border-slate-200 bg-white hover:border-slate-300 text-slate-700'
+                  }`}
                 onClick={() => setModalTab('file')}
               >
-                <Upload size={16} className="mx-auto mb-1 text-purple-600"/>
+                <Upload size={16} className="mx-auto mb-1 text-purple-600" />
                 <span>Import File</span>
               </button>
             </div>
 
             {/* Feedback notification */}
             {syncFeedback && (
-              <div className={`p-2.5 rounded-lg text-xs font-medium ${
-                syncFeedback.type === 'success' ? 'bg-emerald-100 text-emerald-900' :
-                syncFeedback.type === 'warning' ? 'bg-amber-100 text-amber-900' :
-                'bg-rose-100 text-rose-900'
-              }`}>
+              <div className={`p-2.5 rounded-lg text-xs font-medium ${syncFeedback.type === 'success' ? 'bg-emerald-100 text-emerald-900' :
+                  syncFeedback.type === 'warning' ? 'bg-amber-100 text-amber-900' :
+                    'bg-rose-100 text-rose-900'
+                }`}>
                 {syncFeedback.text}
               </div>
             )}
@@ -990,7 +982,7 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
               <div className="space-y-3">
                 <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1.5">
                   <p className="font-bold text-slate-900 flex items-center gap-1.5">
-                    <ShieldCheck size={15} className="text-teal-600"/> Automatic Health Tracking
+                    <ShieldCheck size={15} className="text-teal-600" /> Automatic Health Tracking
                   </p>
                   <p className="text-[11px] text-slate-600 leading-relaxed">
                     Connect your <strong>Apple Health</strong>, <strong>Google Fit</strong>, <strong>Garmin</strong>, or <strong>Fitbit</strong> account. Your daily steps, active energy burned, and sleep duration will sync automatically.
@@ -1003,7 +995,7 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
                     className="btn btn-primary w-full text-xs font-semibold flex items-center justify-center gap-1.5 py-2.5"
                     onClick={handleOpenDevicePortal}
                   >
-                    <Link2 size={14}/> 1. Pair Your Phone or Smartwatch
+                    <Link2 size={14} /> 1. Pair Your Phone or Smartwatch
                   </button>
                   <p className="text-[10px] text-center text-slate-400">
                     Opens the secure device authorization screen to connect your health app.
@@ -1015,7 +1007,7 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
                     onClick={handleSyncCloud}
                     disabled={isValidicLoading}
                   >
-                    <RefreshCw size={13} className={isValidicLoading ? 'animate-spin text-teal-600' : ''}/>
+                    <RefreshCw size={13} className={isValidicLoading ? 'animate-spin text-teal-600' : ''} />
                     <span>{isValidicLoading ? 'Syncing with device…' : '2. Sync Today\'s Activity'}</span>
                   </button>
                 </div>
@@ -1032,7 +1024,7 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div>
                     <label className="text-[10px] font-semibold text-slate-500 flex items-center gap-1">
-                      <Footprints size={11} className="text-teal-600"/> Steps Count
+                      <Footprints size={11} className="text-teal-600" /> Steps Count
                     </label>
                     <input
                       type="number"
@@ -1044,7 +1036,7 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
                   </div>
                   <div>
                     <label className="text-[10px] font-semibold text-slate-500 flex items-center gap-1">
-                      <Flame size={11} className="text-rose-500"/> Active Burn (kcal)
+                      <Flame size={11} className="text-rose-500" /> Active Burn (kcal)
                     </label>
                     <input
                       type="number"
@@ -1056,7 +1048,7 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
                   </div>
                   <div>
                     <label className="text-[10px] font-semibold text-slate-500 flex items-center gap-1">
-                      <Heart size={11} className="text-red-500"/> Resting Heart (bpm)
+                      <Heart size={11} className="text-red-500" /> Resting Heart (bpm)
                     </label>
                     <input
                       type="number"
@@ -1068,7 +1060,7 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
                   </div>
                   <div>
                     <label className="text-[10px] font-semibold text-slate-500 flex items-center gap-1">
-                      <Moon size={11} className="text-purple-500"/> Sleep (hours)
+                      <Moon size={11} className="text-purple-500" /> Sleep (hours)
                     </label>
                     <input
                       type="number"
@@ -1096,7 +1088,7 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
               <div className="space-y-3">
                 <div className="p-3 bg-teal-50/80 border border-teal-200 rounded-xl space-y-1.5 text-xs text-teal-950">
                   <p className="font-bold flex items-center gap-1.5">
-                    <FileText size={14} className="text-teal-700"/> How to Export Apple Health Data:
+                    <FileText size={14} className="text-teal-700" /> How to Export Apple Health Data:
                   </p>
                   <ol className="list-decimal pl-4 space-y-0.5 text-[11px] text-teal-900">
                     <li>Open <strong>Apple Health</strong> app on your iPhone.</li>
@@ -1108,15 +1100,15 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
 
                 <div className="p-4 rounded-xl border border-dashed border-teal-300 bg-white hover:bg-slate-50/50 transition-colors space-y-2 text-center">
                   <p className="text-xs font-bold text-slate-800 flex items-center justify-center gap-1.5">
-                    <Upload size={14} className="text-teal-600"/> Import export.zip or Google Takeout File
+                    <Upload size={14} className="text-teal-600" /> Import export.zip or Google Takeout File
                   </p>
                   <p className="text-[10px] text-slate-500">
                     Files are processed securely and privately on your device.
                   </p>
                   <label className={`btn btn-primary btn-sm cursor-pointer inline-flex items-center gap-1.5 ${fileParsing ? 'opacity-50 pointer-events-none' : ''}`}>
-                    <Upload size={13}/>
+                    <Upload size={13} />
                     <span>{fileParsing ? 'Processing File…' : 'Select Export File'}</span>
-                    <input type="file" accept=".zip,.xml,.json,.csv" className="hidden" onChange={handleFileUpload}/>
+                    <input type="file" accept=".zip,.xml,.json,.csv" className="hidden" onChange={handleFileUpload} />
                   </label>
                 </div>
               </div>
@@ -1128,7 +1120,7 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
                 className="text-xs text-red-600 hover:text-red-700 flex items-center gap-1 font-medium"
                 onClick={handleClearAllHealthData}
               >
-                <Trash2 size={12}/> Reset Health Data
+                <Trash2 size={12} /> Reset Health Data
               </button>
               <button
                 className="btn btn-sm btn-ghost text-xs text-slate-600"
@@ -1152,33 +1144,33 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
             <div className="p-4 sm:p-5 space-y-4 overflow-y-auto max-h-[72dvh]">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <label className="label"><Footprints size={12} className="inline mr-1"/>Steps</label>
-                  <input className="input" type="number" placeholder="8500" value={todayLog.steps} onChange={e => setTodayLog(t => ({...t, steps: e.target.value}))}/>
+                  <label className="label"><Footprints size={12} className="inline mr-1" />Steps</label>
+                  <input className="input" type="number" placeholder="8500" value={todayLog.steps} onChange={e => setTodayLog(t => ({ ...t, steps: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="label"><Flame size={12} className="inline mr-1"/>Calories Burned</label>
-                  <input className="input" type="number" placeholder="450" value={todayLog.calories_burned} onChange={e => setTodayLog(t => ({...t, calories_burned: e.target.value}))}/>
+                  <label className="label"><Flame size={12} className="inline mr-1" />Calories Burned</label>
+                  <input className="input" type="number" placeholder="450" value={todayLog.calories_burned} onChange={e => setTodayLog(t => ({ ...t, calories_burned: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="label"><Droplets size={12} className="inline mr-1"/>Water (ml)</label>
-                  <input className="input" type="number" placeholder="2200" value={todayLog.water_ml} onChange={e => setTodayLog(t => ({...t, water_ml: e.target.value}))}/>
+                  <label className="label"><Droplets size={12} className="inline mr-1" />Water (ml)</label>
+                  <input className="input" type="number" placeholder="2200" value={todayLog.water_ml} onChange={e => setTodayLog(t => ({ ...t, water_ml: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="label"><Heart size={12} className="inline mr-1"/>Heart Rate (bpm)</label>
-                  <input className="input" type="number" placeholder="72" value={todayLog.heart_rate_bpm} onChange={e => setTodayLog(t => ({...t, heart_rate_bpm: e.target.value}))}/>
+                  <label className="label"><Heart size={12} className="inline mr-1" />Heart Rate (bpm)</label>
+                  <input className="input" type="number" placeholder="72" value={todayLog.heart_rate_bpm} onChange={e => setTodayLog(t => ({ ...t, heart_rate_bpm: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="label"><Moon size={12} className="inline mr-1"/>Sleep Hours</label>
-                  <input className="input" type="number" step="0.5" placeholder="7.5" value={todayLog.sleep_hours} onChange={e => setTodayLog(t => ({...t, sleep_hours: e.target.value}))}/>
+                  <label className="label"><Moon size={12} className="inline mr-1" />Sleep Hours</label>
+                  <input className="input" type="number" step="0.5" placeholder="7.5" value={todayLog.sleep_hours} onChange={e => setTodayLog(t => ({ ...t, sleep_hours: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="label"><Dumbbell size={12} className="inline mr-1"/>Workout (min)</label>
-                  <input className="input" type="number" placeholder="30" value={todayLog.workout_minutes} onChange={e => setTodayLog(t => ({...t, workout_minutes: e.target.value}))}/>
+                  <label className="label"><Dumbbell size={12} className="inline mr-1" />Workout (min)</label>
+                  <input className="input" type="number" placeholder="30" value={todayLog.workout_minutes} onChange={e => setTodayLog(t => ({ ...t, workout_minutes: e.target.value }))} />
                 </div>
               </div>
               <div>
                 <label className="label">Workout Type</label>
-                <select className="select" value={todayLog.workout_type} onChange={e => setTodayLog(t => ({...t, workout_type: e.target.value}))}>
+                <select className="select" value={todayLog.workout_type} onChange={e => setTodayLog(t => ({ ...t, workout_type: e.target.value }))}>
                   <option value="">Select type</option>
                   {WORKOUT_TYPES.map(w => <option key={w} value={w}>{w}</option>)}
                 </select>
@@ -1187,19 +1179,18 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
                 <label className="label">Mood</label>
                 <div className="flex flex-wrap gap-2">
                   {MOODS.map(m => (
-                    <button key={m} onClick={() => setTodayLog(t => ({...t, mood: m}))}
-                      className={`px-3 py-2 rounded-xl text-sm border transition-all ${
-                        todayLog.mood === m ? 'border-teal-400 bg-teal-50 font-bold' : 'border-slate-200 bg-white'
-                      }`}>{m}</button>
+                    <button key={m} onClick={() => setTodayLog(t => ({ ...t, mood: m }))}
+                      className={`px-3 py-2 rounded-xl text-sm border transition-all ${todayLog.mood === m ? 'border-teal-400 bg-teal-50 font-bold' : 'border-slate-200 bg-white'
+                        }`}>{m}</button>
                   ))}
                 </div>
               </div>
               <div>
                 <label className="label">Notes</label>
-                <textarea className="textarea h-16" placeholder="Any health observations…" value={todayLog.notes} onChange={e => setTodayLog(t => ({...t, notes: e.target.value}))}/>
+                <textarea className="textarea h-16" placeholder="Any health observations…" value={todayLog.notes} onChange={e => setTodayLog(t => ({ ...t, notes: e.target.value }))} />
               </div>
               <button className="btn btn-primary btn-lg w-full" onClick={handleManualLog} disabled={saving}>
-                {saving ? 'Saving…' : <><Save size={16}/> Save Today's Log</>}
+                {saving ? 'Saving…' : <><Save size={16} /> Save Today's Log</>}
               </button>
             </div>
           </div>
