@@ -45,13 +45,13 @@ export default function BookingModal({ hospital, doctor, currentUser, onConfirm,
     <div className="modal-backdrop" onClick={e => { if(e.target === e.currentTarget) onClose(); }}>
       <div className="modal-box max-w-md w-full">
         {/* Header */}
-        <div className="p-5 border-b flex items-center justify-between" style={{borderColor:'#E2E8F0'}}>
-          <h2 className="font-bold text-slate-900">Book Appointment</h2>
+        <div className="p-4 sm:p-5 border-b flex items-center justify-between" style={{borderColor:'#E2E8F0'}}>
+          <h2 className="font-bold text-slate-900 text-sm sm:text-base">Book Appointment</h2>
           <button className="btn btn-icon btn-sm btn-ghost" onClick={onClose}><X size={18}/></button>
         </div>
 
         {step === 3 ? (
-          <div className="p-8 text-center animate-scale-in">
+          <div className="p-6 sm:p-8 text-center animate-scale-in">
             <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse-ring"
                  style={{background:'#D1FAE5'}}>
               <CheckCircle2 size={32} className="text-green-600"/>
@@ -62,16 +62,16 @@ export default function BookingModal({ hospital, doctor, currentUser, onConfirm,
             <p className="text-xs text-slate-400 mt-3">A confirmation will be sent to {currentUser?.email}</p>
           </div>
         ) : (
-          <div className="p-5 space-y-5">
+          <div className="p-4 sm:p-5 space-y-4 sm:space-y-5">
             {/* Hospital/Doctor Info */}
-            <div className="p-4 rounded-2xl flex items-center gap-3" style={{background:'#F0FDFA', border:'1px solid #CCFBF1'}}>
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{background:'#CCFBF1'}}>
+            <div className="p-3.5 sm:p-4 rounded-2xl flex items-center gap-3" style={{background:'#F0FDFA', border:'1px solid #CCFBF1'}}>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{background:'#CCFBF1'}}>
                 <Building2 size={18} className="text-teal-700"/>
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-slate-800 text-sm truncate">{hospital?.name}</p>
-                {doctor && <p className="text-xs text-teal-700 flex items-center gap-1 mt-0.5">
-                  <Stethoscope size={11}/> {doctor.name} · {doctor.specialty}
+                {doctor && <p className="text-xs text-teal-700 flex items-center gap-1 mt-0.5 truncate">
+                  <Stethoscope size={11} className="flex-shrink-0"/> {doctor.name} · {doctor.specialty}
                 </p>}
               </div>
             </div>
@@ -92,7 +92,7 @@ export default function BookingModal({ hospital, doctor, currentUser, onConfirm,
             {selectedDate && (
               <div>
                 <label className="label"><Clock size={13} className="inline mr-1"/>Select Time</label>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {TIME_SLOTS.map(t => (
                     <button
                       key={t}

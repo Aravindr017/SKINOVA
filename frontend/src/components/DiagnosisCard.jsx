@@ -76,12 +76,12 @@ export default function DiagnosisCard({
 
         <div className="p-5">
           {/* Prediction & Confidence */}
-          <div className="flex items-start justify-between gap-4 mb-4">
-            <div>
+          <div className="flex items-start justify-between gap-3 mb-4">
+            <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
                 Detected Skin Condition
               </p>
-              <h2 className="text-xl font-bold text-slate-900" style={{ fontFamily: 'Outfit,sans-serif' }}>
+              <h2 className="text-lg sm:text-xl font-bold text-slate-900 truncate" style={{ fontFamily: 'Outfit,sans-serif' }}>
                 {result.prediction}
               </h2>
               {result.icd_code && (
@@ -89,8 +89,8 @@ export default function DiagnosisCard({
               )}
             </div>
             <div className="flex-shrink-0 text-right">
-              <p className="text-xs text-slate-400 mb-1">Confidence</p>
-              <div className="text-3xl font-extrabold gradient-text" style={{ fontFamily: 'Outfit,sans-serif' }}>
+              <p className="text-xs text-slate-400 mb-0.5 sm:mb-1">Confidence</p>
+              <div className="text-2xl sm:text-3xl font-extrabold gradient-text" style={{ fontFamily: 'Outfit,sans-serif' }}>
                 {confPct}%
               </div>
             </div>
@@ -108,14 +108,14 @@ export default function DiagnosisCard({
 
           {/* AI Clinical Summary */}
           {result.llm_summary && (
-            <div className="p-4 rounded-xl mb-4" style={{ background: '#F0FDFA', border: '1px solid #99F6E4' }}>
+            <div className="p-3.5 sm:p-4 rounded-xl mb-4" style={{ background: '#F0FDFA', border: '1px solid #99F6E4' }}>
               <div className="flex items-center gap-2 mb-2">
-                <Sparkles size={14} className="text-teal-600" />
+                <Sparkles size={14} className="text-teal-600 flex-shrink-0" />
                 <span className="text-xs font-bold text-teal-800 uppercase tracking-wider">
                   AI Clinical Consultation Analysis
                 </span>
               </div>
-              <p className="text-sm text-slate-700 leading-relaxed">{result.llm_summary}</p>
+              <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">{result.llm_summary}</p>
             </div>
           )}
 
@@ -151,11 +151,11 @@ export default function DiagnosisCard({
           )}
 
           {/* Recommended Nearby Hospitals Section (Tailored to Live Location & Condition) */}
-          <div className="p-4 rounded-2xl border mb-5 space-y-3" style={{ background: '#F8FAFC', borderColor: '#E2E8F0' }}>
-            <div className="flex items-center justify-between">
+          <div className="p-3.5 sm:p-4 rounded-2xl border mb-5 space-y-3" style={{ background: '#F8FAFC', borderColor: '#E2E8F0' }}>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
               <div className="flex items-center gap-2">
-                <Building2 size={16} className="text-teal-600" />
-                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                <Building2 size={15} className="text-teal-600 flex-shrink-0" />
+                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider truncate">
                   Recommended Specialists for {result.prediction.split(' ')[0]}
                 </h3>
               </div>
@@ -197,7 +197,7 @@ export default function DiagnosisCard({
                         )}
                       </div>
 
-                      <div className="flex items-center gap-2 flex-shrink-0">
+                      <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end">
                         <a
                           href={mapsUrl}
                           target="_blank"
@@ -209,7 +209,7 @@ export default function DiagnosisCard({
                         </a>
                         <button
                           type="button"
-                          className="btn btn-sm btn-primary text-xs flex items-center gap-1"
+                          className="btn btn-sm btn-primary text-xs flex items-center gap-1 flex-1 sm:flex-initial"
                           onClick={() => {
                             if (onBookAppointment) {
                               onBookAppointment(hosp, doc || null);
@@ -229,7 +229,7 @@ export default function DiagnosisCard({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-3 flex-wrap">
+          <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3">
             <button className="btn btn-primary flex-1 text-xs sm:text-sm" onClick={onFindHospital}>
               <MapPin size={15}/> View All Nearby Dermatologists
             </button>

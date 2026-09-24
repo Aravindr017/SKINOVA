@@ -24,17 +24,17 @@ export default function UserHistory({ scanHistory = [], appointments = [], curre
 
   return (
     <div className="space-y-5 animate-fade-up">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-slate-900" style={{ fontFamily: 'Outfit,sans-serif' }}>My Health Records</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Your scan history and doctor appointment records</p>
+          <h1 className="text-lg sm:text-xl font-bold text-slate-900" style={{ fontFamily: 'Outfit,sans-serif' }}>My Health Records</h1>
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Your scan history and doctor appointment records</p>
         </div>
         {currentUser && tab === 'scans' && scanHistory.length > 0 && (
           <button
-            className="btn btn-sm btn-ghost text-red-600 hover:bg-red-50 flex items-center gap-1.5"
+            className="btn btn-sm btn-ghost text-red-600 hover:bg-red-50 flex items-center gap-1.5 self-start sm:self-auto text-xs"
             onClick={() => setShowClearConfirm(true)}
           >
-            <Trash2 size={14} /> Clear All Scans
+            <Trash2 size={13} /> Clear All Scans
           </button>
         )}
       </div>
@@ -101,7 +101,7 @@ export default function UserHistory({ scanHistory = [], appointments = [], curre
                 </div>
               ) : (
                 scanHistory.map(scan => (
-                  <div key={scan.id} className="card p-4 flex items-center gap-4 card-interactive group">
+                  <div key={scan.id} className="card p-3 sm:p-4 flex items-center gap-2.5 sm:gap-4 card-interactive group">
                     <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-slate-100 border" style={{ borderColor: '#E2E8F0' }}>
                       {scan.previewUrl ? (
                         <img src={scan.previewUrl} alt="" className="w-full h-full object-cover"/>
@@ -165,7 +165,7 @@ export default function UserHistory({ scanHistory = [], appointments = [], curre
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-slate-900 truncate">{appt.hospital_name}</p>
                           <p className="text-sm text-slate-600 mt-0.5">{appt.doctor_name || 'Specialist Dermatologist'} · {appt.doctor_specialty || 'Dermatology'}</p>
-                          <div className="flex items-center gap-3 mt-2 text-xs text-slate-500">
+                          <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-2 text-xs text-slate-500">
                             <span className="flex items-center gap-1"><Calendar size={12}/> {appt.date || appt.preferred_date}</span>
                             <span className="flex items-center gap-1"><Clock size={12}/> {appt.time || appt.preferred_time}</span>
                           </div>

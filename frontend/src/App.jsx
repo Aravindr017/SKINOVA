@@ -193,33 +193,33 @@ export function App() {
 
   // ── Dashboard ──────────────────────────────────────────────
   const DashboardView = () => (
-    <div className="space-y-6 animate-fade-up">
+    <div className="space-y-5 sm:space-y-6 animate-fade-up">
       {/* Hero */}
-      <div className="card p-6 overflow-hidden relative"
+      <div className="card p-4 sm:p-6 overflow-hidden relative"
            style={{background: 'linear-gradient(135deg, #0D9488 0%, #0891B2 100%)'}}>
         <div className="absolute inset-0 opacity-10"
              style={{backgroundImage: 'radial-gradient(circle at 80% 50%, white 0%, transparent 60%)'}}>
         </div>
         <div className="relative z-10">
           <div className="flex items-center gap-2 mb-2">
-            <span className="badge" style={{background:'rgba(255,255,255,0.2)', color:'#fff'}}>
+            <span className="badge text-[11px] py-0.5" style={{background:'rgba(255,255,255,0.2)', color:'#fff'}}>
               ✦ AI-Powered
             </span>
           </div>
-          <h1 className="text-2xl font-bold text-white mb-1" style={{fontFamily:'Outfit,sans-serif'}}>
+          <h1 className="text-xl sm:text-2xl font-bold text-white mb-1" style={{fontFamily:'Outfit,sans-serif'}}>
             Good {getGreeting()}, {currentUser?.name?.split(' ')[0] || 'there'} 👋
           </h1>
-          <p className="text-teal-100 text-sm mb-4">
+          <p className="text-teal-100 text-xs sm:text-sm mb-3.5 sm:mb-4 truncate max-w-lg">
             Your health dashboard is ready. {locationName && `📍 ${locationName}`}
           </p>
-          <div className="flex gap-3 flex-wrap">
-            <button className="btn btn-sm" onClick={() => setActiveTab('scan')}
+          <div className="flex gap-2 sm:gap-3 flex-wrap">
+            <button className="btn btn-sm text-xs sm:text-sm" onClick={() => setActiveTab('scan')}
               style={{background:'rgba(255,255,255,0.2)', color:'#fff', border:'1px solid rgba(255,255,255,0.3)'}}>
-              <Camera size={15}/> Start Scan
+              <Camera size={14}/> Start Scan
             </button>
-            <button className="btn btn-sm" onClick={() => setActiveTab('chat')}
+            <button className="btn btn-sm text-xs sm:text-sm" onClick={() => setActiveTab('chat')}
               style={{background:'rgba(255,255,255,0.15)', color:'#fff', border:'1px solid rgba(255,255,255,0.2)'}}>
-              <MessageSquare size={15}/> Ask AI
+              <MessageSquare size={14}/> Ask AI
             </button>
           </div>
         </div>
@@ -235,7 +235,7 @@ export function App() {
         ].map((stat, i) => (
           <div key={stat.label} className={`stat-card animate-fade-up delay-${(i+1)*100}`}>
             <div className="stat-icon" style={{background: stat.bg}}>
-              <stat.icon size={20} style={{color: stat.color}}/>
+              <stat.icon size={18} style={{color: stat.color}}/>
             </div>
             <div className="stat-value">{stat.value}</div>
             <div className="stat-label">{stat.label}</div>
@@ -244,9 +244,9 @@ export function App() {
       </div>
 
       {/* Quick Actions */}
-      <div className="card p-5">
-        <h2 className="text-base font-semibold text-slate-700 mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="card p-4 sm:p-5">
+        <h2 className="text-sm sm:text-base font-semibold text-slate-700 mb-3 sm:mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 sm:gap-3">
           {[
             { label: 'Skin Analysis',  icon: Camera,      tab: 'scan',      color: '#0D9488', bg: '#F0FDFA' },
             { label: 'AI Consultant',  icon: MessageSquare, tab: 'chat',    color: '#7C3AED', bg: '#F5F3FF' },
@@ -254,12 +254,12 @@ export function App() {
             { label: 'Health Tracker', icon: Heart,       tab: 'health',    color: '#E11D48', bg: '#FFF1F2' },
           ].map(a => (
             <button key={a.label} onClick={() => setActiveTab(a.tab)}
-              className="card-sm p-4 flex flex-col items-center gap-2 cursor-pointer card-interactive transition-all">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+              className="card-sm p-3 sm:p-4 flex flex-col items-center gap-1.5 sm:gap-2 cursor-pointer card-interactive transition-all">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center flex-shrink-0"
                    style={{background: a.bg}}>
-                <a.icon size={18} style={{color: a.color}}/>
+                <a.icon size={17} style={{color: a.color}}/>
               </div>
-              <span className="text-xs font-semibold text-slate-600 text-center">{a.label}</span>
+              <span className="text-[11px] sm:text-xs font-semibold text-slate-600 text-center leading-tight">{a.label}</span>
             </button>
           ))}
         </div>
@@ -267,24 +267,24 @@ export function App() {
 
       {/* Recent History */}
       {scanHistory.length > 0 && (
-        <div className="card p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold text-slate-700">Recent Scans</h2>
-            <button className="btn btn-sm btn-ghost" onClick={() => setActiveTab('history')}>
-              View all <ChevronRight size={14}/>
+        <div className="card p-4 sm:p-5">
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <h2 className="text-sm sm:text-base font-semibold text-slate-700">Recent Scans</h2>
+            <button className="btn btn-sm btn-ghost text-xs" onClick={() => setActiveTab('history')}>
+              View all <ChevronRight size={13}/>
             </button>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-2.5 sm:space-y-3">
             {scanHistory.slice(0, 3).map(scan => (
-              <div key={scan.id} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors">
+              <div key={scan.id} className="flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors">
                 <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-slate-200">
                   {scan.previewUrl && <img src={scan.previewUrl} alt="" className="w-full h-full object-cover"/>}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-slate-800 truncate">{scan.prediction}</p>
-                  <p className="text-xs text-slate-500">{new Date(scan.date).toLocaleDateString()}</p>
+                  <p className="text-xs sm:text-sm font-semibold text-slate-800 truncate">{scan.prediction}</p>
+                  <p className="text-[10px] sm:text-xs text-slate-500">{new Date(scan.date).toLocaleDateString()}</p>
                 </div>
-                <span className={`badge ${scan.risk_level === 'low' ? 'badge-success' : scan.risk_level === 'high' ? 'badge-danger' : 'badge-warning'}`}>
+                <span className={`badge flex-shrink-0 text-[10px] ${scan.risk_level === 'low' ? 'badge-success' : scan.risk_level === 'high' ? 'badge-danger' : 'badge-warning'}`}>
                   {scan.risk_level}
                 </span>
               </div>
@@ -295,14 +295,14 @@ export function App() {
 
       {/* No scan CTA */}
       {scanHistory.length === 0 && (
-        <div className="card p-8 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-teal-50 flex items-center justify-center mx-auto mb-4">
-            <Sparkles size={28} className="text-teal-600"/>
+        <div className="card p-6 sm:p-8 text-center">
+          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-teal-50 flex items-center justify-center mx-auto mb-3 sm:mb-4">
+            <Sparkles size={24} className="text-teal-600"/>
           </div>
-          <h3 className="text-lg font-bold text-slate-800 mb-2">Start your first scan</h3>
-          <p className="text-sm text-slate-500 mb-4">Upload a skin image and let our AI detect conditions instantly with clinical-grade accuracy.</p>
-          <button className="btn btn-primary" onClick={() => setActiveTab('scan')}>
-            <Camera size={16}/> Scan Now
+          <h3 className="text-base sm:text-lg font-bold text-slate-800 mb-1 sm:mb-2">Start your first scan</h3>
+          <p className="text-xs sm:text-sm text-slate-500 mb-4 max-w-sm mx-auto">Upload a skin image and let our AI detect conditions instantly with clinical-grade accuracy.</p>
+          <button className="btn btn-primary btn-sm sm:btn-md" onClick={() => setActiveTab('scan')}>
+            <Camera size={15}/> Scan Now
           </button>
         </div>
       )}
@@ -311,20 +311,22 @@ export function App() {
 
   // ── Scan View ──────────────────────────────────────────────
   const ScanView = () => (
-    <div className="space-y-5 animate-fade-up">
+    <div className="space-y-4 sm:space-y-5 animate-fade-up">
       <div>
-        <h1 className="text-xl font-bold text-slate-900">AI Skin Analysis</h1>
-        <p className="text-sm text-slate-500 mt-0.5">Upload a dermoscopic or clinical skin image for instant AI diagnosis</p>
+        <h1 className="text-lg sm:text-xl font-bold text-slate-900">AI Skin Analysis</h1>
+        <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Upload a dermoscopic or clinical skin image for instant AI diagnosis</p>
       </div>
 
       {!currentUser && (
-        <div className="card p-4 flex items-start gap-3" style={{borderColor:'#FDE68A', background:'#FFFBEB'}}>
-          <AlertTriangle size={18} className="text-amber-500 mt-0.5 flex-shrink-0"/>
-          <div>
-            <p className="text-sm font-semibold text-amber-800">Sign in to save results</p>
-            <p className="text-xs text-amber-600 mt-0.5">Your scan history and reports will be saved when you're signed in.</p>
+        <div className="card p-3.5 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3" style={{borderColor:'#FDE68A', background:'#FFFBEB'}}>
+          <div className="flex items-center gap-2.5">
+            <AlertTriangle size={18} className="text-amber-500 flex-shrink-0"/>
+            <div>
+              <p className="text-xs sm:text-sm font-semibold text-amber-800">Sign in to save results</p>
+              <p className="text-[11px] sm:text-xs text-amber-600 mt-0.5">Your scan history and reports will be saved when you're signed in.</p>
+            </div>
           </div>
-          <button className="btn btn-sm ml-auto" onClick={() => setAuthModalOpen(true)}
+          <button className="btn btn-sm sm:ml-auto w-full sm:w-auto" onClick={() => setAuthModalOpen(true)}
             style={{background:'#D97706', color:'#fff'}}>Sign In</button>
         </div>
       )}
@@ -338,9 +340,9 @@ export function App() {
       />
 
       {scanError && (
-        <div className="card p-4 flex items-center gap-3" style={{borderColor:'#FCA5A5', background:'#FFF5F5'}}>
-          <AlertTriangle size={18} className="text-red-500"/>
-          <p className="text-sm text-red-700">{scanError}</p>
+        <div className="card p-3.5 sm:p-4 flex items-center gap-3" style={{borderColor:'#FCA5A5', background:'#FFF5F5'}}>
+          <AlertTriangle size={18} className="text-red-500 flex-shrink-0"/>
+          <p className="text-xs sm:text-sm text-red-700">{scanError}</p>
         </div>
       )}
 
@@ -421,22 +423,22 @@ export function App() {
         </div>
       </aside>
 
-      {/* ── Mobile Sidebar Overlay ───────────────────── */}
+      {/* ── Mobile Sidebar Drawer ───────────────────── */}
       {sidebarOpen && (
-        <div className="fixed inset-0 z-40 flex">
-          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+        <div className="fixed inset-0 z-50 flex">
+          <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity"
                onClick={() => setSidebarOpen(false)}/>
-          <aside className="relative z-50 w-72 h-full flex flex-col border-r animate-slide-left"
+          <aside className="relative z-50 w-72 max-w-[84vw] h-full flex flex-col border-r animate-slide-left shadow-2xl"
                  style={{background:'#fff', borderColor:'#E2E8F0'}}>
-            <div className="p-5 border-b flex items-center justify-between" style={{borderColor:'#E2E8F0'}}>
+            <div className="p-4 border-b flex items-center justify-between" style={{borderColor:'#E2E8F0'}}>
               <div
-                className="flex items-center gap-3 cursor-pointer hover:opacity-90 transition-opacity"
+                className="flex items-center gap-2.5 cursor-pointer hover:opacity-90 transition-opacity"
                 onClick={() => { setActiveTab('dashboard'); setSidebarOpen(false); }}
                 title="Return to Dashboard"
               >
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center transition-transform hover:scale-105"
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center"
                      style={{background:'linear-gradient(135deg,#14B8A6,#0F766E)'}}>
-                  <Activity size={18} className="text-white"/>
+                  <Activity size={16} className="text-white"/>
                 </div>
                 <span className="font-bold text-slate-900 text-base" style={{fontFamily:'Outfit,sans-serif'}}>SKINOVA</span>
               </div>
@@ -444,27 +446,33 @@ export function App() {
                 <X size={18}/>
               </button>
             </div>
-            <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+            <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
               {NAV_ITEMS.map(item => (
                 <button
                   key={item.id}
                   className={`sidebar-link ${activeTab === item.id ? 'active' : ''}`}
                   onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
                 >
-                  <item.icon size={18}/>
-                  <span>{item.label}</span>
+                  <item.icon size={18} className="flex-shrink-0"/>
+                  <span className="truncate">{item.label}</span>
+                  {activeTab === item.id && (
+                    <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-600"/>
+                  )}
                 </button>
               ))}
             </nav>
             <div className="p-4 border-t" style={{borderColor:'#E2E8F0'}}>
               {currentUser ? (
                 <div className="flex items-center gap-3">
-                  <img src={currentUser.picture} alt="" className="w-9 h-9 rounded-full object-cover"/>
+                  <img src={currentUser.picture} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0"
+                       onError={e => { e.target.style.display='none'; }}/>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-slate-800 truncate">{currentUser.name}</p>
                     <p className="text-xs text-slate-400 truncate">{currentUser.email}</p>
                   </div>
-                  <button className="btn btn-icon btn-sm btn-ghost" onClick={handleLogout}><LogOut size={15}/></button>
+                  <button className="btn btn-icon btn-sm btn-ghost" onClick={handleLogout} title="Sign Out">
+                    <LogOut size={15}/>
+                  </button>
                 </div>
               ) : (
                 <button className="btn btn-primary w-full" onClick={() => { setAuthModalOpen(true); setSidebarOpen(false); }}>
@@ -479,40 +487,40 @@ export function App() {
       {/* ── Main Area ───────────────────────────────── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top Header */}
-        <header className="flex-shrink-0 h-14 flex items-center gap-4 px-4 sm:px-6 border-b"
+        <header className="flex-shrink-0 h-14 flex items-center justify-between gap-2 px-3 sm:px-6 border-b"
                 style={{background:'#fff', borderColor:'#E2E8F0'}}>
-          {/* Mobile menu btn */}
-          <button className="btn btn-icon btn-sm btn-ghost md:hidden" onClick={() => setSidebarOpen(true)}>
-            <Menu size={20}/>
-          </button>
+          <div className="flex items-center gap-2 min-w-0">
+            {/* Mobile menu hamburger */}
+            <button className="btn btn-icon btn-sm btn-ghost md:hidden flex-shrink-0" onClick={() => setSidebarOpen(true)} title="Open Navigation Menu">
+              <Menu size={19}/>
+            </button>
 
-          {/* Page title / Dashboard Link */}
-          <div className="flex-1 min-w-0">
+            {/* Brand icon on mobile + page title */}
             <button
               type="button"
               onClick={() => setActiveTab('dashboard')}
-              className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity text-left"
+              className="flex items-center gap-2 cursor-pointer hover:opacity-85 transition-opacity text-left min-w-0"
               title="Return to Dashboard"
             >
               <div
-                className="w-7 h-7 rounded-lg flex items-center justify-center md:hidden"
+                className="w-7 h-7 rounded-lg flex items-center justify-center md:hidden flex-shrink-0"
                 style={{ background: 'linear-gradient(135deg,#14B8A6,#0F766E)' }}
               >
                 <Activity size={14} className="text-white" />
               </div>
-              <h2 className="text-sm font-semibold text-slate-800 truncate">
+              <h2 className="text-sm sm:text-base font-semibold text-slate-800 truncate">
                 {NAV_ITEMS.find(n => n.id === activeTab)?.label || 'Dashboard'}
               </h2>
             </button>
           </div>
 
           {/* Right actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             {locationName && (
               <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-500 px-3 py-1.5 rounded-full"
                    style={{background:'#F1F5F9'}}>
-                <MapPin size={12} className="text-teal-600"/>
-                <span className="truncate max-w-[120px]">{locationName}</span>
+                <MapPin size={12} className="text-teal-600 flex-shrink-0"/>
+                <span className="truncate max-w-[140px]">{locationName}</span>
               </div>
             )}
             <button
@@ -529,12 +537,20 @@ export function App() {
                       style={{background:'#F43F5E'}}>{notifCount}</span>
               )}
             </button>
-            {currentUser && (
-              <button className="w-8 h-8 rounded-full overflow-hidden border-2 flex-shrink-0"
+            {currentUser ? (
+              <button className="w-8 h-8 rounded-full overflow-hidden border-2 flex-shrink-0 hover:ring-2 hover:ring-teal-400 transition-all"
                       style={{borderColor:'#CCFBF1'}}
+                      title="View Profile"
                       onClick={() => setActiveTab('profile')}>
                 <img src={currentUser.picture} alt="" className="w-full h-full object-cover"
                      onError={e => { e.target.style.display='none'; }}/>
+              </button>
+            ) : (
+              <button
+                className="btn btn-sm btn-primary text-xs px-2.5 sm:px-3.5"
+                onClick={() => setAuthModalOpen(true)}
+              >
+                Sign In
               </button>
             )}
           </div>
@@ -542,7 +558,7 @@ export function App() {
 
         {/* Scrollable Content */}
         <main className="flex-1 overflow-y-auto main-content">
-          <div className="max-w-4xl mx-auto p-4 sm:p-6">
+          <div className="max-w-4xl mx-auto p-3.5 sm:p-6">
             {activeTab === 'dashboard' && <DashboardView />}
             {activeTab === 'scan'      && <ScanView />}
             {activeTab === 'chat'      && <RAGChatbot currentUser={currentUser} lastResult={diagnosisResult} />}
@@ -577,21 +593,64 @@ export function App() {
           </div>
         </main>
 
-        {/* Mobile Bottom Nav */}
+        {/* Mobile Bottom Nav (5 Adaptive Tabs) */}
         <nav className="mobile-nav fixed bottom-0 left-0 right-0 z-30 border-t"
-             style={{background:'#fff', borderColor:'#E2E8F0'}}>
-          <div className="flex">
-            {NAV_ITEMS.slice(0, 5).map(item => (
-              <button
-                key={item.id}
-                className="flex-1 flex flex-col items-center gap-0.5 py-2 px-1 transition-colors"
-                style={{color: activeTab === item.id ? '#0D9488' : '#94A3B8'}}
-                onClick={() => setActiveTab(item.id)}
-              >
-                <item.icon size={20}/>
-                <span className="text-[10px] font-medium truncate">{item.label.split(' ')[0]}</span>
-              </button>
-            ))}
+             style={{background:'#fff', borderColor:'#E2E8F0', paddingBottom: 'env(safe-area-inset-bottom, 6px)'}}>
+          <div className="flex items-center">
+            {/* 1. Dashboard */}
+            <button
+              className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 px-1 transition-colors min-h-[48px]"
+              style={{color: activeTab === 'dashboard' ? '#0D9488' : '#94A3B8'}}
+              onClick={() => setActiveTab('dashboard')}
+            >
+              <LayoutDashboard size={19}/>
+              <span className="text-[10px] font-medium leading-none">Home</span>
+            </button>
+
+            {/* 2. Scan */}
+            <button
+              className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 px-1 transition-colors min-h-[48px]"
+              style={{color: activeTab === 'scan' ? '#0D9488' : '#94A3B8'}}
+              onClick={() => setActiveTab('scan')}
+            >
+              <Camera size={19}/>
+              <span className="text-[10px] font-medium leading-none">AI Scan</span>
+            </button>
+
+            {/* 3. Chat */}
+            <button
+              className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 px-1 transition-colors min-h-[48px]"
+              style={{color: activeTab === 'chat' ? '#0D9488' : '#94A3B8'}}
+              onClick={() => setActiveTab('chat')}
+            >
+              <MessageSquare size={19}/>
+              <span className="text-[10px] font-medium leading-none">AI Chat</span>
+            </button>
+
+            {/* 4. Doctors */}
+            <button
+              className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 px-1 transition-colors min-h-[48px]"
+              style={{color: activeTab === 'hospitals' ? '#0D9488' : '#94A3B8'}}
+              onClick={() => setActiveTab('hospitals')}
+            >
+              <Building2 size={19}/>
+              <span className="text-[10px] font-medium leading-none">Doctors</span>
+            </button>
+
+            {/* 5. More / Menu (Direct drawer trigger or active extended tab indicator) */}
+            <button
+              className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 px-1 transition-colors relative min-h-[48px]"
+              style={{color: ['health', 'history', 'profile'].includes(activeTab) ? '#0D9488' : '#94A3B8'}}
+              onClick={() => setSidebarOpen(true)}
+            >
+              <Menu size={19}/>
+              <span className="text-[10px] font-medium leading-none">
+                {activeTab === 'health' ? 'Health' : activeTab === 'history' ? 'History' : activeTab === 'profile' ? 'Profile' : 'More'}
+              </span>
+              {['health', 'history', 'profile'].includes(activeTab) && (
+                <span className="absolute top-1.5 right-1/4 w-1.5 h-1.5 rounded-full bg-teal-600"/>
+              )}
+            </button>
           </div>
         </nav>
       </div>

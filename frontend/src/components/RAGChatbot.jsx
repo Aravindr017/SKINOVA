@@ -187,48 +187,48 @@ export default function RAGChatbot({ currentUser, lastResult }) {
   }]);
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-8rem)] max-h-[700px] animate-fade-up">
+    <div className="flex flex-col h-[calc(100dvh-10.5rem)] sm:h-[calc(100dvh-8rem)] max-h-[720px] animate-fade-up">
       {/* Header */}
-      <div className="card p-4 flex items-center gap-3 mb-4 flex-shrink-0">
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center relative"
+      <div className="card p-3 sm:p-4 flex items-center gap-2.5 sm:gap-3 mb-3 sm:mb-4 flex-shrink-0">
+        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center relative flex-shrink-0"
              style={{background:'linear-gradient(135deg,#CCFBF1,#0D9488)'}}>
-          <Bot size={20} className="text-white"/>
-          <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white" style={{background:'#10B981'}}/>
+          <Bot size={18} className="text-white"/>
+          <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 border-white" style={{background:'#10B981'}}/>
         </div>
-        <div className="flex-1">
-          <h1 className="font-bold text-slate-900">SKINOVA AI Consultant</h1>
-          <p className="text-xs text-slate-500">WHO & DermNet guidelines · RAG-powered · Secure</p>
+        <div className="flex-1 min-w-0">
+          <h1 className="font-bold text-slate-900 text-sm sm:text-base truncate">SKINOVA AI Consultant</h1>
+          <p className="text-[11px] sm:text-xs text-slate-500 truncate">WHO & DermNet guidelines · RAG-powered</p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 px-2 py-1 rounded-lg" style={{background:'#F0FDFA'}}>
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+          <div className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-lg" style={{background:'#F0FDFA'}}>
             <Shield size={11} className="text-teal-600"/>
             <span className="text-xs text-teal-700 font-semibold">Protected</span>
           </div>
-          <button className="btn btn-sm btn-ghost" onClick={resetChat}>
-            <RotateCcw size={14}/> Reset
+          <button className="btn btn-sm btn-ghost text-xs px-2 sm:px-3" onClick={resetChat} title="Reset chat history">
+            <RotateCcw size={13}/> <span className="hidden sm:inline">Reset</span>
           </button>
         </div>
       </div>
 
       {/* Context card if scan done */}
       {lastResult && (
-        <div className="card-sm p-3 mb-3 flex items-center gap-2 flex-shrink-0" style={{background:'#F0FDFA', border:'1px solid #99F6E4'}}>
+        <div className="card-sm p-2.5 sm:p-3 mb-2.5 sm:mb-3 flex items-center gap-2 flex-shrink-0" style={{background:'#F0FDFA', border:'1px solid #99F6E4'}}>
           <Bot size={13} className="text-teal-600 flex-shrink-0"/>
-          <p className="text-xs text-teal-700">
-            Discussing your recent scan: <strong>{lastResult.class_name || lastResult.prediction}</strong> ({Math.round((lastResult.confidence||0)*100)}% confidence)
+          <p className="text-xs text-teal-700 truncate">
+            Discussing your scan: <strong>{lastResult.class_name || lastResult.prediction}</strong> ({Math.round((lastResult.confidence||0)*100)}% confidence)
           </p>
         </div>
       )}
 
       {/* Messages */}
-      <div className="card flex-1 overflow-y-auto p-4 space-y-4 mb-4">
+      <div className="card flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4 mb-3 sm:mb-4">
         {messages.map(msg => (
-          <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-            <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-bold"
+          <div key={msg.id} className={`flex gap-2 sm:gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex-shrink-0 flex items-center justify-center text-white text-[11px] sm:text-xs font-bold"
                  style={{background: msg.role === 'ai' ? 'linear-gradient(135deg,#14B8A6,#0D9488)' : '#6366F1'}}>
-              {msg.role === 'ai' ? <Bot size={14}/> : <span>{currentUser?.name?.[0] || 'U'}</span>}
+              {msg.role === 'ai' ? <Bot size={13}/> : <span>{currentUser?.name?.[0] || 'U'}</span>}
             </div>
-            <div className={`flex-1 max-w-[85%] ${msg.role === 'user' ? 'flex flex-col items-end' : ''}`}>
+            <div className={`flex-1 max-w-[90%] sm:max-w-[85%] ${msg.role === 'user' ? 'flex flex-col items-end' : ''}`}>
               {msg.role === 'ai' ? (
                 <div className={`chat-bubble-ai ${msg.isWarning ? 'border border-amber-200' : ''}`}
                      style={msg.isWarning ? {background:'#FFFBEB'} : {}}>
@@ -252,10 +252,10 @@ export default function RAGChatbot({ currentUser, lastResult }) {
         ))}
 
         {loading && (
-          <div className="flex gap-3">
-            <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center"
+          <div className="flex gap-2 sm:gap-3">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex-shrink-0 flex items-center justify-center"
                  style={{background:'linear-gradient(135deg,#14B8A6,#0D9488)'}}>
-              <Bot size={14} className="text-white"/>
+              <Bot size={13} className="text-white"/>
             </div>
             <div className="chat-bubble-ai">
               <div className="flex gap-1.5 py-1">
@@ -272,10 +272,10 @@ export default function RAGChatbot({ currentUser, lastResult }) {
 
       {/* Suggestions */}
       {messages.length <= 2 && (
-        <div className="flex gap-2 flex-wrap mb-3">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 mb-2 sm:mb-3 flex-nowrap">
           {SUGGESTIONS.map(s => (
             <button key={s} onClick={() => sendMessage(s)}
-              className="badge badge-primary cursor-pointer hover:opacity-80 transition-opacity text-xs py-2 px-3">
+              className="badge badge-primary cursor-pointer hover:opacity-80 transition-opacity text-xs py-1.5 px-3 flex-shrink-0">
               {s}
             </button>
           ))}
@@ -283,15 +283,15 @@ export default function RAGChatbot({ currentUser, lastResult }) {
       )}
 
       {/* Security note */}
-      <div className="text-xs text-slate-400 mb-2 flex items-center gap-1.5">
-        <Shield size={11}/> Messages are scanned for security. Ask only dermatology-related questions.
+      <div className="text-[11px] sm:text-xs text-slate-400 mb-2 flex items-center gap-1.5 truncate">
+        <Shield size={11} className="flex-shrink-0"/> Messages are protected. Ask dermatology-related questions.
       </div>
 
       {/* Input */}
-      <div className="card p-3 flex gap-3 flex-shrink-0">
+      <div className="card p-2.5 sm:p-3 flex gap-2 sm:gap-3 flex-shrink-0">
         <textarea
           ref={inputRef}
-          className="flex-1 resize-none text-sm text-slate-800 outline-none bg-transparent placeholder-slate-400 max-h-32"
+          className="flex-1 resize-none text-xs sm:text-sm text-slate-800 outline-none bg-transparent placeholder-slate-400 max-h-32"
           placeholder="Ask about skin conditions, treatments, prevention…"
           rows={1}
           value={input}
@@ -305,7 +305,7 @@ export default function RAGChatbot({ currentUser, lastResult }) {
           onClick={() => sendMessage()}
           disabled={!input.trim() || loading}
         >
-          {loading ? <Loader2 size={16} className="animate-spin"/> : <Send size={16}/>}
+          {loading ? <Loader2 size={15} className="animate-spin"/> : <Send size={15}/>}
         </button>
       </div>
 

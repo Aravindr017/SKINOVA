@@ -93,15 +93,15 @@ export default function ImageUploader({ onFileSelect, selectedFile, previewUrl, 
             <X size={15} className="text-white" />
           </button>
         </div>
-        <div className="p-4 flex items-center justify-between bg-slate-50">
-          <div>
-            <p className="text-sm font-semibold text-slate-800 truncate max-w-xs">{selectedFile?.name}</p>
-            <p className="text-xs text-slate-500">{selectedFile ? (selectedFile.size / 1024).toFixed(1) + ' KB' : ''}</p>
+        <div className="p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50">
+          <div className="min-w-0">
+            <p className="text-xs sm:text-sm font-semibold text-slate-800 truncate max-w-xs">{selectedFile?.name}</p>
+            <p className="text-[11px] sm:text-xs text-slate-500">{selectedFile ? (selectedFile.size / 1024).toFixed(1) + ' KB' : ''}</p>
           </div>
-          <div className="flex gap-2">
-            <button className="btn btn-sm btn-ghost" onClick={clearFile}><X size={14} /> Clear</button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <button className="btn btn-sm btn-ghost flex-1 sm:flex-initial" onClick={clearFile}><X size={14} /> Clear</button>
             <button
-              className="btn btn-sm btn-primary"
+              className="btn btn-sm btn-primary flex-1 sm:flex-initial"
               onClick={onScan}
               disabled={isScanning}
             >
@@ -126,20 +126,20 @@ export default function ImageUploader({ onFileSelect, selectedFile, previewUrl, 
   return (
     <div className="space-y-4">
       <div
-        className={`upload-zone p-10 flex flex-col items-center gap-4 text-center ${isDragging ? 'drag-over' : ''}`}
+        className={`upload-zone p-6 sm:p-10 flex flex-col items-center gap-3 sm:gap-4 text-center ${isDragging ? 'drag-over' : ''}`}
         onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
       >
-        <div className="w-16 h-16 rounded-2xl flex items-center justify-center animate-float"
+        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center animate-float"
           style={{ background: 'linear-gradient(135deg,#CCFBF1,#99F6E4)' }}>
-          <Upload size={28} className="text-teal-600" />
+          <Upload size={26} className="text-teal-600" />
         </div>
         <div>
-          <p className="text-base font-semibold text-slate-700">Drop your skin image here</p>
-          <p className="text-sm text-slate-400 mt-1">or click to browse files</p>
-          <p className="text-xs text-slate-400 mt-2">PNG, JPG, WEBP up to 10MB</p>
+          <p className="text-sm sm:text-base font-semibold text-slate-700">Drop your skin image here</p>
+          <p className="text-xs sm:text-sm text-slate-400 mt-0.5 sm:mt-1">or click to browse files</p>
+          <p className="text-[11px] sm:text-xs text-slate-400 mt-1.5 sm:mt-2">PNG, JPG, WEBP up to 10MB</p>
         </div>
         <input
           ref={fileInputRef}
@@ -150,11 +150,11 @@ export default function ImageUploader({ onFileSelect, selectedFile, previewUrl, 
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <button className="btn btn-secondary btn-lg" onClick={() => fileInputRef.current?.click()}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
+        <button className="btn btn-secondary text-xs sm:text-sm py-2.5 sm:py-3.5" onClick={() => fileInputRef.current?.click()}>
           <Upload size={16} /> Upload Image
         </button>
-        <button className="btn btn-secondary btn-lg" onClick={openCamera}>
+        <button className="btn btn-secondary text-xs sm:text-sm py-2.5 sm:py-3.5" onClick={openCamera}>
           <Camera size={16} /> Use Camera
         </button>
       </div>

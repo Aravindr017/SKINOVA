@@ -167,10 +167,10 @@ export default function HospitalFinder({
       {/* Header & Location Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-slate-900" style={{ fontFamily: 'Outfit,sans-serif' }}>
+          <h1 className="text-lg sm:text-xl font-bold text-slate-900" style={{ fontFamily: 'Outfit,sans-serif' }}>
             Find Dermatologists & Hospitals
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
             Verified skin care clinics & dermato-oncology centers near your live coordinates
           </p>
         </div>
@@ -180,23 +180,23 @@ export default function HospitalFinder({
           <button
             type="button"
             onClick={() => setShowCityPicker(!showCityPicker)}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-teal-900 transition-all hover:bg-teal-100/90 border shadow-xs"
+            className="inline-flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:py-2 rounded-xl text-xs font-semibold text-teal-900 transition-all hover:bg-teal-100/90 border shadow-xs max-w-full"
             style={{ background: '#F0FDFA', borderColor: '#99F6E4' }}
             title="Click to change location or re-scan GPS"
           >
             {locating ? (
-              <Loader2 size={14} className="animate-spin text-teal-600" />
+              <Loader2 size={13} className="animate-spin text-teal-600 flex-shrink-0" />
             ) : (
-              <Navigation size={14} className="text-teal-600" />
+              <Navigation size={13} className="text-teal-600 flex-shrink-0" />
             )}
-            <span className="max-w-[180px] truncate">{locationName || 'Detecting Location…'}</span>
-            <ChevronDown size={13} className="text-teal-600 ml-1" />
+            <span className="max-w-[150px] sm:max-w-[200px] truncate">{locationName || 'Detecting Location…'}</span>
+            <ChevronDown size={12} className="text-teal-600 ml-0.5 flex-shrink-0" />
           </button>
 
           {/* Location Selector Popup */}
           {showCityPicker && (
             <div
-              className="absolute right-0 top-full mt-2 w-80 sm:w-96 rounded-2xl bg-white border shadow-xl p-4 z-40 space-y-3 animate-fade-up"
+              className="absolute right-0 top-full mt-2 w-[calc(100vw-2rem)] max-w-sm rounded-2xl bg-white border shadow-xl p-3.5 sm:p-4 z-40 space-y-3 animate-fade-up"
               style={{ borderColor: '#E2E8F0' }}
             >
               <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: '#F1F5F9' }}>
@@ -272,9 +272,9 @@ export default function HospitalFinder({
             onChange={e => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="flex flex-wrap gap-2.5">
+        <div className="flex flex-col sm:flex-row gap-2.5">
           <select
-            className="select flex-1 min-w-[160px]"
+            className="select flex-1 min-w-0"
             value={specialty}
             onChange={e => setSpecialty(e.target.value)}
           >
@@ -285,7 +285,7 @@ export default function HospitalFinder({
             ))}
           </select>
           <select
-            className="select w-36"
+            className="select w-full sm:w-40"
             value={sortBy}
             onChange={e => setSortBy(e.target.value)}
           >
@@ -440,12 +440,12 @@ function HospitalCard({ hospital, onBook, isSelected, onSelect }) {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-2.5 mt-4 pt-3 border-t border-slate-100">
+        <div className="flex flex-col sm:flex-row gap-2 mt-4 pt-3 border-t border-slate-100">
           <a
             href={mapsUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="btn btn-sm btn-ghost text-xs text-slate-600 flex items-center gap-1 hover:text-teal-700"
+            className="btn btn-sm btn-ghost text-xs text-slate-600 flex items-center justify-center gap-1 hover:text-teal-700"
           >
             <Compass size={13} /> Open in Maps
           </a>
@@ -475,30 +475,32 @@ function HospitalCard({ hospital, onBook, isSelected, onSelect }) {
           {hospital.doctors.map(doc => (
             <div
               key={doc.id || doc.name}
-              className="flex items-center gap-3 p-3 rounded-xl bg-white border hover:border-teal-300 transition-colors shadow-xs"
+              className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-xl bg-white border hover:border-teal-300 transition-colors shadow-xs"
               style={{ borderColor: '#E2E8F0' }}
             >
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0"
-                style={{ background: 'linear-gradient(135deg,#14B8A6,#0D9488)' }}
-              >
-                {(doc.name?.split(' ').find(p => p.length > 1 && p !== 'Dr.') || 'D')[0]}
-              </div>
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0"
+                  style={{ background: 'linear-gradient(135deg,#14B8A6,#0F766E)' }}
+                >
+                  {(doc.name?.split(' ').find(p => p.length > 1 && p !== 'Dr.') || 'D')[0]}
+                </div>
 
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-slate-800 truncate">{doc.name}</p>
-                <p className="text-xs text-slate-500 truncate">
-                  {doc.specialization || doc.specialty} · {doc.experience_years || doc.experience || '8+'} yrs exp
-                </p>
-                {doc.next_slot && (
-                  <p className="text-[11px] text-teal-600 font-medium flex items-center gap-1 mt-0.5">
-                    <Clock size={10} /> Next slot: {doc.next_slot}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-800 truncate">{doc.name}</p>
+                  <p className="text-xs text-slate-500 truncate">
+                    {doc.specialization || doc.specialty} · {doc.experience_years || doc.experience || '8+'} yrs exp
                   </p>
-                )}
+                  {doc.next_slot && (
+                    <p className="text-[11px] text-teal-600 font-medium flex items-center gap-1 mt-0.5">
+                      <Clock size={10} /> Next slot: {doc.next_slot}
+                    </p>
+                  )}
+                </div>
               </div>
 
               <button
-                className="btn btn-sm btn-primary text-xs"
+                className="btn btn-sm btn-primary text-xs w-full sm:w-auto flex-shrink-0"
                 onClick={() => onBook(doc)}
               >
                 Book with Doctor

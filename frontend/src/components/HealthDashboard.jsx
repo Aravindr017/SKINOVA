@@ -598,7 +598,7 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
       {/* Connect Health App Modal */}
       {showConnectModal && (
         <div className="modal-backdrop" onClick={() => setShowConnectModal(false)}>
-          <div className="modal-box max-w-md w-full p-6 space-y-5 animate-fade-up" onClick={e => e.stopPropagation()}>
+          <div className="modal-box max-w-md w-full p-4 sm:p-6 space-y-4 sm:space-y-5 animate-fade-up" onClick={e => e.stopPropagation()}>
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center text-teal-600">
@@ -752,12 +752,12 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
       {logging && (
         <div className="modal-backdrop" onClick={e => { if (e.target === e.currentTarget) setLogging(false); }}>
           <div className="modal-box max-w-lg w-full">
-            <div className="p-5 border-b flex items-center justify-between" style={{ borderColor: '#E2E8F0' }}>
-              <h2 className="font-bold text-slate-900">Log Health Data Manually</h2>
+            <div className="p-4 sm:p-5 border-b flex items-center justify-between" style={{ borderColor: '#E2E8F0' }}>
+              <h2 className="font-bold text-slate-900 text-sm sm:text-base">Log Health Data Manually</h2>
               <button className="btn btn-icon btn-sm btn-ghost" onClick={() => setLogging(false)}>✕</button>
             </div>
-            <div className="p-5 space-y-4 overflow-y-auto max-h-[70dvh]">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="p-4 sm:p-5 space-y-4 overflow-y-auto max-h-[72dvh]">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="label"><Footprints size={12} className="inline mr-1"/>Steps</label>
                   <input className="input" type="number" placeholder="8500" value={todayLog.steps} onChange={e => setTodayLog(t => ({...t, steps: e.target.value}))}/>

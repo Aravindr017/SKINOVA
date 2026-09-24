@@ -54,10 +54,13 @@ export default function AuthModal({ onLogin, onClose }) {
           auto_select: false,
           cancel_on_tap_outside: true,
         });
+        const btnWidth = typeof window !== 'undefined'
+          ? Math.min(Math.max(window.innerWidth - 64, 240), 360)
+          : 320;
         window.google.accounts.id.renderButton(googleBtnRef.current, {
           theme: 'outline',
           size: 'large',
-          width: 360,
+          width: btnWidth,
           text: mode === 'register' ? 'signup_with' : 'signin_with',
           shape: 'rectangular',
           logo_alignment: 'left',
@@ -209,16 +212,16 @@ export default function AuthModal({ onLogin, onClose }) {
     <div className="modal-backdrop" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal-box max-w-md w-full animate-fade-up">
         {/* Header */}
-        <div className="p-6 pb-0 flex items-start justify-between">
-          <div className="flex items-center gap-3">
+        <div className="p-4 sm:p-6 pb-0 flex items-start justify-between">
+          <div className="flex items-center gap-2.5 sm:gap-3">
             <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center shadow-xs"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-xs flex-shrink-0"
               style={{ background: 'linear-gradient(135deg,#14B8A6,#0F766E)' }}
             >
               <Activity size={18} className="text-white"/>
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900" style={{ fontFamily: 'Outfit,sans-serif' }}>
+              <h2 className="text-base sm:text-lg font-bold text-slate-900" style={{ fontFamily: 'Outfit,sans-serif' }}>
                 {mode === 'login' ? 'Welcome to SKINOVA' : 'Create Your Health Account'}
               </h2>
               <p className="text-xs text-slate-500">
@@ -229,7 +232,7 @@ export default function AuthModal({ onLogin, onClose }) {
           <button className="btn btn-icon btn-sm btn-ghost" onClick={onClose}><X size={18}/></button>
         </div>
 
-        <div className="p-6 space-y-4">
+        <div className="p-4 sm:p-6 space-y-4">
           {/* OFFICIAL GOOGLE SIGN IN BUTTON */}
           <div className="space-y-2">
             <div

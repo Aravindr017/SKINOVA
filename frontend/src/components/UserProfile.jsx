@@ -344,12 +344,12 @@ export default function UserProfile({ currentUser, onLoginRequest, onUserUpdate 
       />
 
       {/* Profile Header Card */}
-      <div className="card p-6 relative overflow-hidden">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
+      <div className="card p-4 sm:p-6 relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5 text-center sm:text-left">
           {/* Avatar with Camera Badge */}
-          <div className="relative group">
+          <div className="relative group flex-shrink-0">
             <div
-              className="w-24 h-24 rounded-2xl overflow-hidden border-3 shadow-md flex items-center justify-center bg-teal-50 cursor-pointer transition-transform hover:scale-105"
+              className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden border-3 shadow-md flex items-center justify-center bg-teal-50 cursor-pointer transition-transform hover:scale-105"
               style={{ borderColor: '#14B8A6' }}
               onClick={() => fileInputRef.current?.click()}
               title="Click to change profile picture"
@@ -357,40 +357,40 @@ export default function UserProfile({ currentUser, onLoginRequest, onUserUpdate 
               {pictureUrl ? (
                 <img src={pictureUrl} alt={form.name} className="w-full h-full object-cover"/>
               ) : (
-                <User size={42} className="text-teal-600"/>
+                <User size={38} className="text-teal-600"/>
               )}
             </div>
             <button
               type="button"
-              className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center shadow-lg border-2 border-white transition-transform hover:scale-110"
+              className="absolute -bottom-1 -right-1 w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shadow-lg border-2 border-white transition-transform hover:scale-110"
               style={{ background: '#0D9488' }}
               onClick={() => fileInputRef.current?.click()}
               title="Upload new photo"
             >
-              <Camera size={14} className="text-white"/>
+              <Camera size={13} className="text-white"/>
             </button>
           </div>
 
           {/* User Info Details */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-2xl font-bold text-slate-900" style={{ fontFamily: 'Outfit,sans-serif' }}>
+            <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-900" style={{ fontFamily: 'Outfit,sans-serif' }}>
                 {form.name || currentUser.name}
               </h1>
-              <span className="badge badge-primary text-xs">
+              <span className="badge badge-primary text-[11px] py-0.5">
                 {currentUser.provider === 'google' ? '🔐 Google Verified' : '📧 Email Account'}
               </span>
             </div>
-            <p className="text-sm text-slate-500 mt-0.5">{currentUser.email}</p>
+            <p className="text-xs sm:text-sm text-slate-500 mt-0.5 truncate">{currentUser.email}</p>
 
-            <div className="flex flex-wrap gap-2 mt-3">
-              {form.blood_group && <span className="badge badge-danger">🩸 {form.blood_group}</span>}
-              {form.age && <span className="badge badge-neutral">🎂 {form.age} yrs</span>}
-              {form.gender && <span className="badge badge-neutral">👤 {form.gender}</span>}
-              {form.skin_type && <span className="badge badge-warning">🧴 {form.skin_type} Skin</span>}
+            <div className="flex flex-wrap justify-center sm:justify-start gap-1.5 sm:gap-2 mt-2.5 sm:mt-3">
+              {form.blood_group && <span className="badge badge-danger text-[11px]">🩸 {form.blood_group}</span>}
+              {form.age && <span className="badge badge-neutral text-[11px]">🎂 {form.age} yrs</span>}
+              {form.gender && <span className="badge badge-neutral text-[11px]">👤 {form.gender}</span>}
+              {form.skin_type && <span className="badge badge-warning text-[11px]">🧴 {form.skin_type} Skin</span>}
             </div>
 
-            <div className="flex items-center gap-2 mt-3">
+            <div className="flex items-center justify-center sm:justify-start gap-2 mt-3">
               <button
                 className="btn btn-sm btn-secondary text-xs flex items-center gap-1.5"
                 onClick={() => fileInputRef.current?.click()}
@@ -407,7 +407,7 @@ export default function UserProfile({ currentUser, onLoginRequest, onUserUpdate 
           </div>
 
           <button
-            className="btn btn-sm btn-secondary flex-shrink-0 self-start sm:self-center"
+            className="btn btn-sm btn-secondary flex-shrink-0 w-full sm:w-auto self-stretch sm:self-start"
             onClick={() => setEditing(!editing)}
           >
             <Edit3 size={14}/> {editing ? 'Cancel Editing' : 'Edit Profile'}
@@ -702,7 +702,7 @@ export default function UserProfile({ currentUser, onLoginRequest, onUserUpdate 
       ───────────────────────────────────────────────────────────── */}
       {activeModal === 'notifications' && (
         <div className="modal-backdrop" onClick={() => setActiveModal(null)}>
-          <div className="modal-box max-w-md w-full p-6 space-y-5 animate-fade-up" onClick={e => e.stopPropagation()}>
+          <div className="modal-box max-w-md w-full p-4 sm:p-6 space-y-4 sm:space-y-5 animate-fade-up" onClick={e => e.stopPropagation()}>
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center text-teal-600">
@@ -757,7 +757,7 @@ export default function UserProfile({ currentUser, onLoginRequest, onUserUpdate 
       ───────────────────────────────────────────────────────────── */}
       {activeModal === 'privacy' && (
         <div className="modal-backdrop" onClick={() => setActiveModal(null)}>
-          <div className="modal-box max-w-md w-full p-6 space-y-5 animate-fade-up" onClick={e => e.stopPropagation()}>
+          <div className="modal-box max-w-md w-full p-4 sm:p-6 space-y-4 sm:space-y-5 animate-fade-up" onClick={e => e.stopPropagation()}>
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center text-teal-600">
@@ -827,7 +827,7 @@ export default function UserProfile({ currentUser, onLoginRequest, onUserUpdate 
       ───────────────────────────────────────────────────────────── */}
       {activeModal === 'security' && (
         <div className="modal-backdrop" onClick={() => setActiveModal(null)}>
-          <div className="modal-box max-w-md w-full p-6 space-y-5 animate-fade-up" onClick={e => e.stopPropagation()}>
+          <div className="modal-box max-w-md w-full p-4 sm:p-6 space-y-4 sm:space-y-5 animate-fade-up" onClick={e => e.stopPropagation()}>
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center text-teal-600">
@@ -927,7 +927,7 @@ export default function UserProfile({ currentUser, onLoginRequest, onUserUpdate 
       ───────────────────────────────────────────────────────────── */}
       {activeModal === 'goals' && (
         <div className="modal-backdrop" onClick={() => setActiveModal(null)}>
-          <div className="modal-box max-w-md w-full p-6 space-y-5 animate-fade-up" onClick={e => e.stopPropagation()}>
+          <div className="modal-box max-w-md w-full p-4 sm:p-6 space-y-4 sm:space-y-5 animate-fade-up" onClick={e => e.stopPropagation()}>
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600">

@@ -36,24 +36,27 @@ export default function ReportModal({ result, previewUrl, currentUser, onClose }
   return (
     <div className="modal-backdrop" onClick={e => { if(e.target === e.currentTarget) onClose(); }}>
       <div className="modal-box max-w-2xl w-full">
-        <div className="p-5 border-b flex items-center justify-between" style={{borderColor:'#E2E8F0'}}>
-          <div className="flex items-center gap-2">
-            <FileText size={18} className="text-teal-600"/>
-            <h2 className="font-bold text-slate-900">Skin Analysis Report</h2>
+        <div className="p-4 sm:p-5 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{borderColor:'#E2E8F0'}}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FileText size={18} className="text-teal-600 flex-shrink-0"/>
+              <h2 className="font-bold text-slate-900 text-sm sm:text-base">Skin Analysis Report</h2>
+            </div>
+            <button className="btn btn-icon btn-sm btn-ghost sm:hidden" onClick={onClose}><X size={18}/></button>
           </div>
-          <div className="flex gap-2">
-            <button className="btn btn-sm btn-primary" onClick={handleDownloadPDF} disabled={downloading}>
-              {downloading ? <Loader2 size={14} className="animate-spin"/> : <Download size={14}/>}
-              {downloading ? 'Exporting...' : 'Download PDF'}
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            <button className="btn btn-sm btn-primary flex-1 sm:flex-initial text-xs" onClick={handleDownloadPDF} disabled={downloading}>
+              {downloading ? <Loader2 size={13} className="animate-spin"/> : <Download size={13}/>}
+              <span>{downloading ? 'Exporting...' : 'Download PDF'}</span>
             </button>
-            <button className="btn btn-sm btn-secondary" onClick={handlePrint}>
-              <Printer size={14}/> Print
+            <button className="btn btn-sm btn-secondary flex-1 sm:flex-initial text-xs" onClick={handlePrint}>
+              <Printer size={13}/> Print
             </button>
-            <button className="btn btn-icon btn-sm btn-ghost" onClick={onClose}><X size={18}/></button>
+            <button className="btn btn-icon btn-sm btn-ghost hidden sm:inline-flex" onClick={onClose}><X size={18}/></button>
           </div>
         </div>
 
-        <div ref={reportRef} className="p-6 space-y-6">
+        <div ref={reportRef} className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* Report Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -76,14 +79,14 @@ export default function ReportModal({ result, previewUrl, currentUser, onClose }
 
           {/* Patient */}
           {currentUser && (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <p className="label">Patient Name</p>
-                <p className="text-sm font-semibold text-slate-800">{currentUser.name}</p>
+                <p className="text-sm font-semibold text-slate-800 truncate">{currentUser.name}</p>
               </div>
               <div>
                 <p className="label">Patient Email</p>
-                <p className="text-sm font-semibold text-slate-800">{currentUser.email}</p>
+                <p className="text-sm font-semibold text-slate-800 break-all">{currentUser.email}</p>
               </div>
             </div>
           )}
