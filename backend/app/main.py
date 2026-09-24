@@ -33,7 +33,7 @@ import numpy as np
 from fastapi import FastAPI, File, UploadFile, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from PIL import Image
+from PIL import Image, ImageFilter
 
 from app.predictor import ModelDegradedError, predict_image
 from app.rag import search_knowledge_base
@@ -126,9 +126,13 @@ def validate_uploaded_file(file: UploadFile) -> str:
         )
     return extension
 
-def is_likely_skin_image(image: Image.Image) -> bool:
+def is_likely_skin_lesion_image(image: Image.Image) -> bool:
     """
-    Fast RGB channel heuristic check to filter non-skin images.
+    Check that an image contains skin with a localized lesion-like signal.
+
+    Skin-color coverage alone accepts hands and other normal skin photos.
+    A lesion close-up should also have meaningful central contrast or texture
+    compared with the surrounding area.
     """
     image_rgb = image.convert("RGB").resize((100, 100))
     pixels = np.asarray(image_rgb)
@@ -141,8 +145,37 @@ def is_likely_skin_image(image: Image.Image) -> bool:
         (r > g) & (r > b) &
         ((r - g) > 10)
     )
-    skin_ratio = np.mean(skin_pixels)
-    return skin_ratio >= 0.05
+    grayscale = image_rgb.convert("L")
+    gray = np.asarray(grayscale, dtype=np.float32)
+    blurred = np.asarray(
+        grayscale.filter(ImageFilter.GaussianBlur(radius=4)),
+        dtype=np.float32,
+    )
+    local_contrast = np.abs(gray - blurred) > 10
+
+    center = np.zeros((100, 100), dtype=bool)
+    center[12:88, 12:88] = True
+    outer = ~center
+    center_signal = float(np.mean(local_contrast[center]))
+    outer_signal = float(np.mean(local_contrast[outer]))
+    skin_ratio = float(np.mean(skin_pixels))
+    center_texture = float(np.std(gray[center]))
+
+    has_localized_lesion = (
+        center_signal >= 0.08
+        and center_signal >= (outer_signal * 1.25)
+    )
+
+    # Dermoscopic images may have little skin-colored background, but they
+    # still need a strong, localized lesion pattern in the center.
+    return (
+        skin_ratio >= 0.05 and has_localized_lesion
+    ) or (
+        skin_ratio < 0.05
+        and has_localized_lesion
+        and center_signal >= 0.15
+        and center_texture >= 12
+    )
 
 # ==========================================
 # Root & Health Check Endpoints
@@ -215,10 +248,13 @@ async def upload_image(file: UploadFile = File(...)):
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid or corrupted image file.")
 
-    if not is_likely_skin_image(image):
+    if not is_likely_skin_lesion_image(image):
         raise HTTPException(
             status_code=422,
-            detail="The uploaded image does not appear to contain a skin lesion or skin surface."
+            detail=(
+                "Please upload a clear, well-lit close-up of one skin lesion. "
+                "Hand photos, normal skin, and wide-area images are not supported."
+            )
         )
 
     new_filename = f"{uuid4().hex}{extension}"
@@ -258,8 +294,12 @@ async def predict_skin_disease(file: UploadFile = File(...)):
         except Exception:
             return None, (400, "Invalid image file format or corrupted upload.")
 
-        if not is_likely_skin_image(img):
-            return None, (422, "The uploaded image does not appear to be a valid skin or lesion image.")
+        if not is_likely_skin_lesion_image(img):
+            return None, (
+                422,
+                "Please upload a clear, well-lit close-up of one skin lesion. "
+                "Hand photos, normal skin, and wide-area images are not supported.",
+            )
 
         try:
             pred = predict_image(img)
