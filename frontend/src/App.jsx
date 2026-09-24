@@ -399,10 +399,18 @@ export function App() {
           });
           data = res.data;
         } catch (netErr) {
-          // If network error (backend down or lost connection), seamlessly run offline on-device!
-          console.warn('[SKINOVA] Cloud scan failed, falling back to local on-device inference:', netErr);
+          // If the backend clinical gatekeeper specifically rejected the image (422 non-lesion photo, 400 invalid format)
+          if (netErr.response && (netErr.response.status === 422 || netErr.response.status === 400)) {
+            const errorMsg = netErr.response.data?.detail || 'No distinct skin lesion detected. SKINOVA requires a focused close-up photograph of a specific skin spot or mole for screening.';
+            setScanError(errorMsg);
+            setIsScanning(false);
+            return;
+          }
+          // Only fall back to local offline inference if it was an actual network failure (offline, timeout, 5xx server error)
+          console.warn('[SKINOVA] Cloud scan network failure, falling back to local on-device inference:', netErr);
           data = await predictOffline(selectedFile);
         }
+
       }
 
       // Normalize: ensure frontend-friendly field names exist alongside backend ones

@@ -146,6 +146,47 @@ export async function preprocessImageForONNX(imageSource) {
         const imgData = ctx.getImageData(0, 0, 240, 240);
         const { data } = imgData;
 
+        // -----------------------------------------------------------------
+        // On-Device Lesion Gatekeeper: Screen out flat walls, paper, and blank surfaces
+        // -----------------------------------------------------------------
+        const totalPixels = 240 * 240;
+        let lumSum = 0;
+        let whitePaperPixels = 0;
+        const lumValues = new Float32Array(totalPixels);
+
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+          const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+          const pxIdx = i / 4;
+          lumValues[pxIdx] = lum;
+          lumSum += lum;
+
+          // Check if pixel is achromatic bright white (paper sheet / document background)
+          if (r > 215 && g > 215 && b > 215 && Math.abs(r - g) < 14 && Math.abs(g - b) < 14) {
+            whitePaperPixels++;
+          }
+        }
+
+        const meanLum = lumSum / totalPixels;
+        let varSum = 0;
+        for (let i = 0; i < totalPixels; i++) {
+          const diff = lumValues[i] - meanLum;
+          varSum += diff * diff;
+        }
+        const stdDev = Math.sqrt(varSum / totalPixels);
+
+        // 1. Rejection: Flat or uniform non-skin surface (solid wall, blank paper, solid color backdrop)
+        if (stdDev < 7.5) {
+          throw new Error('Flat or uniform non-skin surface detected. SKINOVA requires a focused close-up photograph of a specific skin spot or mole for screening.');
+        }
+
+        // 2. Rejection: Paper document / printed sign (>65% blank white paper area)
+        if (whitePaperPixels / totalPixels > 0.65) {
+          throw new Error('Paper document or printed sign detected. Please upload a clear close-up photograph of a localized skin lesion.');
+        }
+
         // EfficientNet-B0 input: [1, 240, 240, 3] float32 in range [0, 255]
         const floatData = new Float32Array(1 * 240 * 240 * 3);
         let ptr = 0;
@@ -158,6 +199,7 @@ export async function preprocessImageForONNX(imageSource) {
 
         const tensor = new ort.Tensor('float32', floatData, [1, 240, 240, 3]);
         resolve(tensor);
+
       } catch (e) {
         reject(e);
       }
