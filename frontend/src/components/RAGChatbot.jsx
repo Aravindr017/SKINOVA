@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, Loader2, RotateCcw, Shield, AlertTriangle, Clock, Sparkles } from 'lucide-react';
 import { api, sanitizeText, isPromptInjection } from '../services/api';
+import { generateOfflineConsultation } from '../services/offlineRAG';
 
 const SUGGESTIONS = [
   'What are the signs of melanoma?',
@@ -94,7 +95,7 @@ function FormattedChatMessage({ content }) {
   );
 }
 
-export default function RAGChatbot({ currentUser, lastResult, onRecordSearch, initialQuery = '' }) {
+export default function RAGChatbot({ currentUser, lastResult, onRecordSearch, initialQuery = '', isOnline = true }) {
   const [messages, setMessages] = useState([
     {
       id: 1, role: 'ai',
@@ -240,20 +241,36 @@ export default function RAGChatbot({ currentUser, lastResult, onRecordSearch, in
     setLoading(true);
 
     try {
-      // Use /api/chat for conversational AI (LLM + RAG)
-      const data = await api.chat({
-        query: q,
-        predictedClass: lastResult?.predicted_class || null,
-        confidence: lastResult?.confidence || null,
-        topK: 4
-      });
+      let data;
+      if (!isOnline) {
+        // 100% In-browser offline clinical consultation
+        data = await generateOfflineConsultation({
+          query: q,
+          predictedClass: lastResult?.predicted_class || null,
+        });
+      } else {
+        try {
+          data = await api.chat({
+            query: q,
+            predictedClass: lastResult?.predicted_class || null,
+            confidence: lastResult?.confidence || null,
+            topK: 4
+          });
+        } catch (netErr) {
+          console.warn('[RAGChatbot] Cloud chat failed, falling back to local clinical knowledge base:', netErr);
+          data = await generateOfflineConsultation({
+            query: q,
+            predictedClass: lastResult?.predicted_class || null,
+          });
+        }
+      }
 
       // Parse and deduplicate sources array
       const rawSources = (data.sources || []).map(s => {
         if (typeof s === 'string') return s;
-        const disease = s?.chunk?.disease;
-        const title = s?.chunk?.title;
-        const sourceName = s?.chunk?.source;
+        const disease = s?.chunk?.disease || s?.disease;
+        const title = s?.chunk?.title || s?.title;
+        const sourceName = s?.chunk?.source || s?.source;
         if (disease && title && disease !== title) return `${disease} — ${title}`;
         return title || disease || s?.chunk?.filename || sourceName || '';
       }).filter(Boolean);
@@ -262,8 +279,9 @@ export default function RAGChatbot({ currentUser, lastResult, onRecordSearch, in
       const aiMsg = {
         id: Date.now() + 1,
         role: 'ai',
-        text: data.answer || 'I found some relevant medical information. Please consult a dermatologist for personalized advice.',
+        text: data.reply || data.answer || 'I found some relevant medical information. Please consult a dermatologist for personalized advice.',
         sources: sources,
+        isOffline: Boolean(data.is_offline),
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setMessages(prev => [...prev, aiMsg]);
@@ -340,6 +358,15 @@ export default function RAGChatbot({ currentUser, lastResult, onRecordSearch, in
           </button>
         </div>
       </div>
+
+      {/* Offline Mode Banner */}
+      {!isOnline && (
+        <div className="flex items-center gap-2 px-3.5 py-2 mb-2 rounded-xl bg-amber-50/90 border border-amber-200 text-xs text-amber-900 flex-shrink-0 animate-fade-up">
+          <span className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0 animate-pulse" />
+          <span className="font-bold">Offline Clinical Mode:</span>
+          <span className="text-amber-800 truncate">Consulting in-browser WHO & DermNet knowledge base (zero internet needed).</span>
+        </div>
+      )}
 
       {/* History Session Banner (when viewing chat from history) */}
       {historySession && (

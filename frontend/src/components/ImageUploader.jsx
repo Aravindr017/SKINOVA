@@ -1,7 +1,7 @@
 import React, { useRef, useState, useCallback } from 'react';
 import { Camera, Upload, X, ZoomIn, Loader2, Sparkles } from 'lucide-react';
 
-export default function ImageUploader({ onFileSelect, selectedFile, previewUrl, isScanning, onScan }) {
+export default function ImageUploader({ onFileSelect, selectedFile, previewUrl, isScanning, onScan, isOnline = true }) {
   const fileInputRef = useRef();
   const [isDragging, setIsDragging] = useState(false);
   const [cameraMode, setCameraMode] = useState(false);
@@ -81,7 +81,9 @@ export default function ImageUploader({ onFileSelect, selectedFile, previewUrl, 
               <div className="glass rounded-2xl px-6 py-4 text-center">
                 <Loader2 size={28} className="animate-spin text-teal-400 mx-auto mb-2" />
                 <p className="text-white font-semibold text-sm">Analyzing skin lesion…</p>
-                <p className="text-teal-200 text-xs mt-1">AI model processing</p>
+                <p className="text-teal-200 text-xs mt-1">
+                  {isOnline ? 'Cloud AI model consensus processing' : '⚡ On-Device WebAssembly processing (100% Offline)'}
+                </p>
               </div>
             </div>
           )}
@@ -101,23 +103,32 @@ export default function ImageUploader({ onFileSelect, selectedFile, previewUrl, 
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <button className="btn btn-sm btn-ghost flex-1 sm:flex-initial" onClick={clearFile}><X size={14} /> Clear</button>
             <button
-              className="btn btn-sm btn-primary flex-1 sm:flex-initial"
+              className={`btn btn-sm flex-1 sm:flex-initial ${isOnline ? 'btn-primary' : 'bg-amber-600 hover:bg-amber-700 text-white'}`}
               onClick={onScan}
               disabled={isScanning}
             >
-              {isScanning ? <><Loader2 size={14} className="animate-spin" /> Analyzing…</> : <><Sparkles size={14} /> Run AI Scan</>}
+              {isScanning ? (
+                <><Loader2 size={14} className="animate-spin" /> {isOnline ? 'Analyzing…' : 'Local AI Scanning…'}</>
+              ) : (
+                <><Sparkles size={14} /> {isOnline ? 'Run AI Scan' : '⚡ Run Offline AI Scan'}</>
+              )}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Tips */}
+      {/* Tips & Privacy Notice */}
       <div className="card-sm p-4">
-        <p className="text-xs font-semibold text-slate-600 mb-2">📋 For best results:</p>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs font-semibold text-slate-600">📋 Clinical Guidance:</p>
+          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${isOnline ? 'bg-teal-50 text-teal-700 border border-teal-200' : 'bg-amber-50 text-amber-800 border border-amber-200'}`}>
+            {isOnline ? '🟢 Cloud AI Consensus Active' : '⚡ 100% Offline On-Device Privacy'}
+          </span>
+        </div>
         <ul className="text-xs text-slate-500 space-y-1">
-          <li>• Clear, well-lit close-up of the skin area</li>
-          <li>• Dermoscopic images provide highest accuracy</li>
-          <li>• Avoid motion blur or glare</li>
+          <li>• Clear, well-lit close-up focused directly on the specific mole or skin spot</li>
+          <li>• {isOnline ? 'Evaluated with multimodal clinical vision & local CNN features' : 'Processed 100% locally via WebAssembly — no image leaves your device'}</li>
+          <li>• Avoid motion blur, glare, or distant portrait shots</li>
         </ul>
       </div>
     </div>

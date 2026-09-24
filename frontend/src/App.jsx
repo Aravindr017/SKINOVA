@@ -21,6 +21,7 @@ import HealthDashboard from './components/HealthDashboard';
 import InteractiveBackground from './components/InteractiveBackground';
 
 import api from './services/api';
+import { predictOffline } from './services/offlineScanner';
 import { getUserCoordinates, getCityFromCoordinates } from './utils/location';
 
 // ─── Nav Items ──────────────────────────────────────────────
@@ -38,8 +39,10 @@ export function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Live Internet Connectivity (Online / Offline)
+  // Live Internet Connectivity (Online / Offline) + Manual Demo Toggle
   const [isOnline, setIsOnline] = useState(() => (typeof navigator !== 'undefined' ? navigator.onLine : true));
+  const [forceOffline, setForceOffline] = useState(false);
+  const effectiveOnline = isOnline && !forceOffline;
 
   // Location - defaults to Thiruvananthapuram, Kerala until live GPS updates
   const [userLocation, setUserLocation] = useState({ lat: 8.5241, lon: 76.9366, lng: 76.9366 });
@@ -363,12 +366,26 @@ export function App() {
     setIsScanning(true);
     setScanError(null);
     try {
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-      const { data } = await api.post('/api/predict', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 60000,
-      });
+      let data;
+      if (!effectiveOnline) {
+        // 100% In-Browser Offline On-Device Inference via WebAssembly ONNX
+        data = await predictOffline(selectedFile);
+      } else {
+        try {
+          const formData = new FormData();
+          formData.append('file', selectedFile);
+          const res = await api.post('/api/predict', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+            timeout: 60000,
+          });
+          data = res.data;
+        } catch (netErr) {
+          // If network error (backend down or lost connection), seamlessly run offline on-device!
+          console.warn('[SKINOVA] Cloud scan failed, falling back to local on-device inference:', netErr);
+          data = await predictOffline(selectedFile);
+        }
+      }
+
       // Normalize: ensure frontend-friendly field names exist alongside backend ones
       const normalized = {
         ...data,
@@ -390,17 +407,20 @@ export function App() {
         previewUrl,
         userId: currentUser.id,
         userEmail: currentUser.email,
+        isOffline: Boolean(data.is_offline),
       };
       setScanHistory(h => {
         const updated = [entry, ...h.filter(s => s.id !== entry.id)].slice(0, 50);
         if (currentUser?.id) {
           localStorage.setItem(`skinova_scans_${currentUser.id}`, JSON.stringify(updated));
-          // Cross-device cloud sync
-          api.syncUserActivity?.({
-            userId: currentUser.id,
-            email: currentUser.email,
-            scans: updated,
-          }).catch(() => {});
+          // Cross-device cloud sync if online
+          if (effectiveOnline) {
+            api.syncUserActivity?.({
+              userId: currentUser.id,
+              email: currentUser.email,
+              scans: updated,
+            }).catch(() => {});
+          }
         } else {
           localStorage.setItem('skinova_scans_guest', JSON.stringify(updated));
         }
@@ -411,7 +431,7 @@ export function App() {
     } finally {
       setIsScanning(false);
     }
-  }, [selectedFile, currentUser, previewUrl]);
+  }, [selectedFile, currentUser, previewUrl, effectiveOnline]);
 
   const handleBookAppointment = useCallback((hospital, doctor) => {
     setSelectedHospital(hospital);
@@ -607,6 +627,7 @@ export function App() {
         previewUrl={previewUrl}
         isScanning={isScanning}
         onScan={handleScan}
+        isOnline={effectiveOnline}
       />
 
       {scanError && (
@@ -787,27 +808,28 @@ export function App() {
 
           {/* Right actions */}
           <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-            {/* Live Network Online / Offline Status Indicator */}
-            <div
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold cursor-default transition-all shadow-xs ${isOnline
+            {/* Live Network Online / Offline Status Indicator & Manual Offline Demo Switch */}
+            <button
+              onClick={() => setForceOffline(prev => !prev)}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer transition-all shadow-xs hover:opacity-90 active:scale-95 ${effectiveOnline
                   ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                  : 'bg-rose-50 text-rose-800 border border-rose-200 animate-pulse'
+                  : 'bg-amber-50 text-amber-900 border border-amber-300'
                 }`}
-              title={isOnline ? 'Connected to Internet (Online)' : 'No Internet Connection (Offline Mode Active)'}
+              title={effectiveOnline ? '🟢 Connected (Cloud AI Consensus) — Click to test Offline / Airplane Mode' : '⚡ Offline Mode (On-Device WASM Engine Active) — Click to switch to Online'}
             >
               <span className="relative flex h-2 w-2 flex-shrink-0">
-                {isOnline && (
+                {effectiveOnline && (
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                 )}
                 <span
-                  className={`relative inline-flex rounded-full h-2 w-2 ${isOnline ? 'bg-emerald-500' : 'bg-rose-500'
+                  className={`relative inline-flex rounded-full h-2 w-2 ${effectiveOnline ? 'bg-emerald-500' : 'bg-amber-500'
                     }`}
                 />
               </span>
               <span className="text-[11px] font-semibold select-none hidden min-[360px]:inline">
-                {isOnline ? 'Online' : 'Offline'}
+                {effectiveOnline ? 'Online' : 'Offline Mode'}
               </span>
-            </div>
+            </button>
 
             {locationName && (
               <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-500 px-3 py-1.5 rounded-full"
@@ -860,6 +882,7 @@ export function App() {
                 lastResult={diagnosisResult}
                 onRecordSearch={handleRecordSearch}
                 initialQuery={activeChatQuery}
+                isOnline={effectiveOnline}
               />
             )}
             {activeTab === 'hospitals' && (
