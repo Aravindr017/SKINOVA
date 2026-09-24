@@ -384,7 +384,11 @@ export function App() {
     if (!currentUser) { setAuthModalOpen(true); return; }
     setIsScanning(true);
     setScanError(null);
+    setDiagnosisResult(null);
     try {
+
+
+
       let data;
       if (!effectiveOnline) {
         // 100% In-Browser Offline On-Device Inference via WebAssembly ONNX

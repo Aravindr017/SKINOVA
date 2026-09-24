@@ -147,11 +147,15 @@ export async function preprocessImageForONNX(imageSource) {
         const { data } = imgData;
 
         // -----------------------------------------------------------------
-        // On-Device Lesion Gatekeeper: Screen out flat walls, paper, and blank surfaces
+        // On-Device Lesion Gatekeeper: Screen out walls, paper documents, and portraits
         // -----------------------------------------------------------------
         const totalPixels = 240 * 240;
         let lumSum = 0;
         let whitePaperPixels = 0;
+        let skinPixels = 0;
+        let chromaSum = 0;
+        let topSkinPixels = 0;
+        let bottomSkinPixels = 0;
         const lumValues = new Float32Array(totalPixels);
 
         for (let i = 0; i < data.length; i += 4) {
@@ -160,12 +164,25 @@ export async function preprocessImageForONNX(imageSource) {
           const b = data[i + 2];
           const lum = 0.299 * r + 0.587 * g + 0.114 * b;
           const pxIdx = i / 4;
+          const py = Math.floor(pxIdx / 240);
           lumValues[pxIdx] = lum;
           lumSum += lum;
 
-          // Check if pixel is achromatic bright white (paper sheet / document background)
-          if (r > 215 && g > 215 && b > 215 && Math.abs(r - g) < 14 && Math.abs(g - b) < 14) {
+          const maxC = Math.max(r, g, b);
+          const minC = Math.min(r, g, b);
+          chromaSum += (maxC - minC);
+
+          // Check if pixel is achromatic bright paper
+          if (r > 195 && g > 195 && b > 195 && Math.abs(r - g) < 16 && Math.abs(g - b) < 16) {
             whitePaperPixels++;
+          }
+
+          // Human skin tone test (Fitzpatrick I - VI)
+          const isSkin = (r > 45) && (g > 25) && (b > 15) && (r > g) && (r > b) && ((r - g) > 6) && ((r - b) > 8);
+          if (isSkin) {
+            skinPixels++;
+            if (py < 40) topSkinPixels++;
+            if (py >= 200) bottomSkinPixels++;
           }
         }
 
@@ -176,16 +193,33 @@ export async function preprocessImageForONNX(imageSource) {
           varSum += diff * diff;
         }
         const stdDev = Math.sqrt(varSum / totalPixels);
+        const skinRatio = skinPixels / totalPixels;
+        const meanChroma = chromaSum / totalPixels;
+        const whiteRatio = whitePaperPixels / totalPixels;
 
-        // 1. Rejection: Flat or uniform non-skin surface (solid wall, blank paper, solid color backdrop)
-        if (stdDev < 7.5) {
-          throw new Error('Flat or uniform non-skin surface detected. SKINOVA requires a focused close-up photograph of a specific skin spot or mole for screening.');
+        // 1. Rejection: Paper document or signed paper (>35% white/light paper background)
+        if (whiteRatio > 0.35) {
+          throw new Error('Paper document or signed paper detected. SKINOVA requires a focused close-up photograph of a specific skin spot or mole for screening.');
         }
 
-        // 2. Rejection: Paper document / printed sign (>65% blank white paper area)
-        if (whitePaperPixels / totalPixels > 0.65) {
-          throw new Error('Paper document or printed sign detected. Please upload a clear close-up photograph of a localized skin lesion.');
+        // 2. Rejection: Flat or uniform wall (minimal texture)
+        if (stdDev < 8.0) {
+          throw new Error('Flat or uniform non-skin wall detected. Please upload a clear close-up photograph of a localized skin lesion.');
         }
+
+        // 3. Rejection: Neutral/grey wall or non-skin object (low color saturation)
+        if (meanChroma < 14.0 && skinRatio < 0.05) {
+          throw new Error('Wall, neutral surface, or non-skin object detected. SKINOVA requires a focused close-up photograph of a skin spot or mole.');
+        }
+
+        // 4. Rejection: Passport photo / face portrait / selfie
+        // Top 1/6 (hair/wall) < 10% skin AND Bottom 1/6 (clothes/shirt) < 10% skin while center has face skin
+        const topStripRatio = topSkinPixels / (40 * 240);
+        const bottomStripRatio = bottomSkinPixels / (40 * 240);
+        if (skinRatio > 0.20 && topStripRatio < 0.10 && bottomStripRatio < 0.10) {
+          throw new Error('Face portrait or passport photo detected. SKINOVA requires a macro close-up photograph of a specific skin spot or lesion, not a full portrait.');
+        }
+
 
         // EfficientNet-B0 input: [1, 240, 240, 3] float32 in range [0, 255]
         const floatData = new Float32Array(1 * 240 * 240 * 3);

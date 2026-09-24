@@ -126,56 +126,82 @@ def validate_uploaded_file(file: UploadFile) -> str:
         )
     return extension
 
-def is_likely_skin_lesion_image(image: Image.Image) -> bool:
+def is_likely_skin_lesion_image(image: Image.Image) -> tuple[bool, str]:
     """
-    Check that an image contains skin with a localized lesion-like signal.
-
-    Skin-color coverage alone accepts hands and other normal skin photos.
-    A lesion close-up should also have meaningful central contrast or texture
-    compared with the surrounding area.
+    Validate whether an image contains a genuine localized skin lesion or mole.
+    Rejects:
+    1. Blank paper sheets, signed documents, or forms
+    2. Flat/uniform or textured walls
+    3. Headshots, selfies, and passport-style portraits
+    4. Non-skin objects, landscapes, clothing
     """
-    image_rgb = image.convert("RGB").resize((100, 100))
-    pixels = np.asarray(image_rgb)
-    r = pixels[:, :, 0].astype(np.int16)
-    g = pixels[:, :, 1].astype(np.int16)
-    b = pixels[:, :, 2].astype(np.int16)
+    image_rgb = image.convert("RGB").resize((120, 120))
+    pixels = np.asarray(image_rgb, dtype=np.float32)
+    r = pixels[:, :, 0]
+    g = pixels[:, :, 1]
+    b = pixels[:, :, 2]
 
+    # 1. Paper / document check (white/light grey background > 35%)
+    white_paper = (r > 200) & (g > 200) & (b > 200) & (np.abs(r - g) < 16) & (np.abs(g - b) < 16)
+    white_ratio = float(np.mean(white_paper))
+    if white_ratio > 0.35:
+        return False, "Paper document or signed paper detected. SKINOVA requires a focused close-up photograph of a specific skin spot or mole for screening."
+
+    # 2. Check for human skin chromaticity
     skin_pixels = (
-        (r > 60) & (g > 30) & (b > 15) &
+        (r > 45) & (g > 25) & (b > 15) &
         (r > g) & (r > b) &
-        ((r - g) > 10)
+        ((r - g) > 6) & ((r - b) > 8)
     )
+    skin_ratio = float(np.mean(skin_pixels))
+
+    # 3. Luminance texture and localized contrast
     grayscale = image_rgb.convert("L")
     gray = np.asarray(grayscale, dtype=np.float32)
-    blurred = np.asarray(
-        grayscale.filter(ImageFilter.GaussianBlur(radius=4)),
-        dtype=np.float32,
-    )
+    blurred = np.asarray(grayscale.filter(ImageFilter.GaussianBlur(radius=5)), dtype=np.float32)
     local_contrast = np.abs(gray - blurred) > 10
 
-    center = np.zeros((100, 100), dtype=bool)
-    center[12:88, 12:88] = True
+    center = np.zeros((120, 120), dtype=bool)
+    center[20:100, 20:100] = True
     outer = ~center
+
     center_signal = float(np.mean(local_contrast[center]))
     outer_signal = float(np.mean(local_contrast[outer]))
-    skin_ratio = float(np.mean(skin_pixels))
     center_texture = float(np.std(gray[center]))
+    global_texture = float(np.std(gray))
 
-    has_localized_lesion = (
-        center_signal >= 0.08
-        and center_signal >= (outer_signal * 1.25)
-    )
+    # Flat / uniform wall check
+    if global_texture < 8.0:
+        return False, "Flat or uniform non-skin wall detected. Please upload a clear close-up photograph of a localized skin lesion."
 
-    # Dermoscopic images may have little skin-colored background, but they
-    # still need a strong, localized lesion pattern in the center.
-    return (
-        skin_ratio >= 0.05 and has_localized_lesion
-    ) or (
-        skin_ratio < 0.05
-        and has_localized_lesion
-        and center_signal >= 0.15
-        and center_texture >= 12
-    )
+    # Neutral / grey wall check (low color saturation across image)
+    chroma = float(np.mean(np.max(pixels, axis=-1) - np.min(pixels, axis=-1)))
+    if chroma < 14.0 and skin_ratio < 0.05 and center_signal < 0.15:
+        return False, "Wall or non-skin object detected. SKINOVA requires a focused photograph of a skin lesion."
+
+    # 4. Portrait / Passport photo check:
+    # A passport photo has clothing at the bottom and hair/backdrop at top, with skin in the middle
+    bottom_strip = pixels[100:120, :]
+    b_r, b_g, b_b = bottom_strip[:, :, 0], bottom_strip[:, :, 1], bottom_strip[:, :, 2]
+    bottom_skin = (b_r > 45) & (b_g > 25) & (b_b > 15) & (b_r > b_g) & (b_r > b_b)
+    bottom_skin_ratio = float(np.mean(bottom_skin))
+
+    top_strip = pixels[0:20, :]
+    t_r, t_g, t_b = top_strip[:, :, 0], top_strip[:, :, 1], top_strip[:, :, 2]
+    top_skin = (t_r > 45) & (t_g > 25) & (t_b > 15) & (t_r > t_g) & (t_r > t_b)
+    top_skin_ratio = float(np.mean(top_skin))
+
+    if bottom_skin_ratio < 0.10 and top_skin_ratio < 0.10 and skin_ratio > 0.20:
+        return False, "Face portrait or passport photo detected. SKINOVA requires a close-up photograph of a specific skin spot or lesion, not a full portrait."
+
+    # 5. Genuine skin lesions (dermoscopic or close-up clinical)
+    if skin_ratio >= 0.10 and (center_signal >= 0.05 or center_texture >= 12.0):
+        return True, "Valid skin lesion"
+    if center_signal >= 0.18 and center_texture >= 20.0 and white_ratio < 0.15:
+        return True, "Valid dermoscopic lesion"
+
+    return False, "No distinct skin lesion detected in the provided image. Please upload a clear, focused close-up of a specific skin spot or mole."
+
 
 # ==========================================
 # Root & Health Check Endpoints
@@ -294,9 +320,16 @@ async def predict_skin_disease(file: UploadFile = File(...)):
         except Exception:
             return None, (400, "Invalid image file format or corrupted upload.")
 
+        # Immediate Gatekeeper: Discard non-skin images (walls, paper, passport portraits) before ML inference
+        is_valid, validation_msg = is_likely_skin_lesion_image(img)
+        if not is_valid:
+            return None, (422, validation_msg)
+
+
         try:
             pred = predict_image(img)
             return pred, None
+
         except NonLesionImageError as error:
             return None, (422, str(error))
         except ModelDegradedError as error:
