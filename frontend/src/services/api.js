@@ -9,7 +9,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 // ── Axios instance (this is what components should import as default)
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000,
+  timeout: 60000, // 60s timeout for clinical analysis and LLM generation
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -56,7 +56,7 @@ apiClient.chat = ({ query, predictedClass, confidence, topK, top_k = 4 }) => {
     query: sanitizeText(query, 500),
     predicted_class: predictedClass || null,
     top_k: topK || top_k || 4,
-  }).then(r => r.data);
+  }, { timeout: 45000 }).then(r => r.data);
 };
 
 apiClient.syncUserActivity = ({ userId, email, scans, searches, appointments, healthLogs }) => {
@@ -81,7 +81,10 @@ export const api = {
   checkHealth: () => apiClient.get('/api/health').then(r => r.data),
   predictImage: (file) => {
     const fd = new FormData(); fd.append('file', file);
-    return apiClient.post('/api/predict', fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data);
+    return apiClient.post('/api/predict', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 60000,
+    }).then(r => r.data);
   },
   searchKnowledgeBase: (query, top_k = 5) => apiClient.post('/api/rag', { query: sanitizeText(query, 500), top_k }).then(r => r.data),
   getNearbyHospitals: ({ lat, lon, city, specialty, limit = 10 }) => {
@@ -102,7 +105,7 @@ export const api = {
       predicted_class: predictedClass || null,
       confidence: confidence || null,
       top_k: topK || top_k || 4,
-    }).then(r => r.data);
+    }, { timeout: 45000 }).then(r => r.data);
   },
   syncUserActivity: ({ userId, email, scans, searches, appointments, healthLogs }) => {
     return apiClient.post('/api/user/sync', {

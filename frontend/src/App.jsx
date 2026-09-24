@@ -366,7 +366,8 @@ export function App() {
       const formData = new FormData();
       formData.append('file', selectedFile);
       const { data } = await api.post('/api/predict', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 60000,
       });
       // Normalize: ensure frontend-friendly field names exist alongside backend ones
       const normalized = {

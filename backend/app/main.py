@@ -15,6 +15,7 @@ from pathlib import Path
 from uuid import uuid4
 from io import BytesIO
 from typing import Optional
+import asyncio
 
 # Load .env file (backend/.env or root .env) before importing any env-dependent modules
 try:
@@ -247,23 +248,29 @@ async def predict_skin_disease(file: UploadFile = File(...)):
     if len(image_bytes) > MAX_FILE_SIZE:
         raise HTTPException(status_code=413, detail="Image exceeds the 10 MB limit.")
 
-    try:
-        image = Image.open(BytesIO(image_bytes))
-        image.load()
-        image = image.convert("RGB")
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid image file.")
+    # Process image and run ONNX model in threadpool so the async event loop never blocks
+    def _sync_process_and_predict(raw_bytes: bytes):
+        try:
+            img = Image.open(BytesIO(raw_bytes))
+            # Downsample high-res phone photos to 1200x1200 to prevent CPU memory lag
+            img.thumbnail((1200, 1200), Image.Resampling.LANCZOS)
+            img = img.convert("RGB")
+        except Exception:
+            return None, (400, "Invalid image file format or corrupted upload.")
 
-    if not is_likely_skin_image(image):
-        raise HTTPException(
-            status_code=422,
-            detail="The uploaded image does not appear to be a valid skin or lesion image."
-        )
+        if not is_likely_skin_image(img):
+            return None, (422, "The uploaded image does not appear to be a valid skin or lesion image.")
 
-    try:
-        result = predict_image(image)
-    except Exception as error:
-        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(error)}")
+        try:
+            pred = predict_image(img)
+            return pred, None
+        except Exception as error:
+            return None, (500, f"Prediction failed: {str(error)}")
+
+    result, err = await asyncio.to_thread(_sync_process_and_predict, image_bytes)
+    if err:
+        status_code, err_detail = err
+        raise HTTPException(status_code=status_code, detail=err_detail)
 
     return {
         "success": True,

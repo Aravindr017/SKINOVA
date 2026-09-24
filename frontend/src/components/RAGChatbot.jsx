@@ -275,15 +275,20 @@ export default function RAGChatbot({ currentUser, lastResult, onRecordSearch, in
       });
     } catch (err) {
       const errText = err?.message || '';
+      const isTimeout = errText.toLowerCase().includes('timeout');
       const isInjectionBlocked = errText.toLowerCase().includes('disallowed');
       const failText = isInjectionBlocked
         ? '⚠️ Your query was blocked for security reasons. Please ask a dermatology-related question.'
+        : isTimeout
+        ? '⏱️ The AI server took longer than expected to process your request. Please tap Retry below to re-query with instant clinical synthesis.'
         : `I'm having trouble connecting to the AI server right now. Please ensure the backend is running and try again.\n\nError: ${errText}`;
 
       setMessages(prev => [...prev, {
         id: Date.now() + 1, role: 'ai',
         text: failText,
-        isWarning: isInjectionBlocked,
+        isWarning: isInjectionBlocked || isTimeout,
+        canRetry: !isInjectionBlocked,
+        queryText: q,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }]);
 
@@ -386,6 +391,15 @@ export default function RAGChatbot({ currentUser, lastResult, onRecordSearch, in
                         <p key={i} className="text-xs text-teal-600 truncate">• {s}</p>
                       ))}
                     </div>
+                  )}
+                  {msg.canRetry && (
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-secondary text-xs mt-3 flex items-center gap-1.5"
+                      onClick={() => sendMessage(msg.queryText)}
+                    >
+                      <RotateCcw size={12} /> Retry Question
+                    </button>
                   )}
                 </div>
               ) : (

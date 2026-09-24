@@ -329,7 +329,15 @@ def query_gemini_api(prompt: str, context: str, api_key: str) -> str | None:
         "generationConfig": {"temperature": 0.35, "maxOutputTokens": 700}
     }).encode("utf-8")
 
+    import time
+    start_time = time.time()
+    MAX_GEMINI_WAIT_SECS = 12
+
     for model in GEMINI_MODELS:
+        if time.time() - start_time > MAX_GEMINI_WAIT_SECS:
+            print("[Gemini] Reached 12s wait cap, switching to instant clinical RAG engine.")
+            break
+
         try:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
             req = _ureq.Request(
@@ -338,7 +346,8 @@ def query_gemini_api(prompt: str, context: str, api_key: str) -> str | None:
                 headers={"Content-Type": "application/json"},
                 method="POST"
             )
-            with _ureq.urlopen(req, timeout=25) as resp:
+            # Strict 10-second timeout per attempt to guarantee fast user response
+            with _ureq.urlopen(req, timeout=10) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
                 candidates = data.get("candidates", [])
                 if candidates:
@@ -352,7 +361,7 @@ def query_gemini_api(prompt: str, context: str, api_key: str) -> str | None:
                             text = re.sub(r"\*\*SKINOVA.*?\*\*\s*", "", text, flags=re.IGNORECASE)
                             text = re.sub(r"\*Trained on WHO.*?\*\s*", "", text, flags=re.IGNORECASE)
                             text = re.sub(r"\n{3,}", "\n\n", text).strip()
-                            print(f"[Gemini] ✓ Response from {model}")
+                            print(f"[Gemini] ✓ Response from {model} in {time.time() - start_time:.2f}s")
                             return text
         except _uerr.HTTPError as e:
             body = ""
@@ -368,7 +377,7 @@ def query_gemini_api(prompt: str, context: str, api_key: str) -> str | None:
                 print(f"[Gemini] {model} HTTP {e.code}: {body}")
             continue
         except Exception as e:
-            print(f"[Gemini] {model} error: {type(e).__name__}: {str(e)[:80]}")
+            print(f"[Gemini] {model} timeout/error: {type(e).__name__}: {str(e)[:80]}")
             continue
     return None
 
