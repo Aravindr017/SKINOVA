@@ -73,8 +73,20 @@ export async function getOfflineSession() {
 
   sessionLoadingPromise = (async () => {
     try {
-      // Configure ONNX runtime web for browser environment (Self-hosted offline WebAssembly)
-      ort.env.wasm.wasmPaths = '/wasm/';
+      // Configure ONNX runtime web for browser environment
+      // Try local self-hosted WASM first; if not found (e.g. on cloud host), use jsDelivr CDN
+      try {
+        const testResp = await fetch('/wasm/ort-wasm-simd-threaded.jsep.wasm', { method: 'HEAD' });
+        const contentType = testResp.headers.get('content-type') || '';
+        if (testResp.ok && (contentType.includes('wasm') || contentType.includes('octet-stream'))) {
+          ort.env.wasm.wasmPaths = '/wasm/';
+        } else {
+          ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/';
+        }
+      } catch {
+        ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/';
+      }
+
       ort.env.wasm.numThreads = Math.min(navigator.hardwareConcurrency || 2, 4);
       ort.env.wasm.simd = true;
 
