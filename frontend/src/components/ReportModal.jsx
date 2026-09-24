@@ -116,7 +116,7 @@ export default function ReportModal({ result, previewUrl, currentUser, onClose }
               </div>
               <div>
                 <p className="label">Risk Assessment</p>
-                <span className={`badge ${result?.risk_level === 'high' ? 'badge-danger' : result?.risk_level === 'low' ? 'badge-success' : 'badge-warning'} text-sm py-1`}>
+                <span className={`badge ${['high', 'critical', 'urgent'].includes(result?.risk_level) ? 'badge-danger' : result?.risk_level === 'low' ? 'badge-success' : 'badge-warning'} text-sm py-1`}>
                   {(result?.risk_level || 'N/A').toUpperCase()} RISK
                 </span>
               </div>

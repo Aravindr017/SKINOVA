@@ -10,6 +10,8 @@ const RISK_CONFIG = {
   low:      { color: '#10B981', bg: '#D1FAE5', label: 'Low Risk',      icon: CheckCircle2 },
   moderate: { color: '#F59E0B', bg: '#FEF3C7', label: 'Moderate Risk', icon: AlertTriangle },
   high:     { color: '#F43F5E', bg: '#FFE4E6', label: 'High Risk',     icon: AlertCircle },
+  critical: { color: '#DC2626', bg: '#FEE2E2', label: 'Critical Risk', icon: AlertCircle },
+  urgent:   { color: '#DC2626', bg: '#FEE2E2', label: 'Urgent Care',   icon: AlertCircle },
 };
 
 export default function DiagnosisCard({
