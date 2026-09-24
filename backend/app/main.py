@@ -913,10 +913,10 @@ async def sync_validic_user_data(user_id: str):
                 "water_ml": health_data.get("water_ml", 0),
                 "heart_rate_bpm": health_data.get("heart_rate_bpm"),
                 "sleep_hours": health_data.get("sleep_hours"),
-                "workout_type": "Validic Cloud Sync",
+                "workout_type": "Mobile Device Sync",
                 "workout_minutes": health_data.get("workout_minutes", 0),
                 "mood": "😊 Active",
-                "notes": f"Genuine sync from Validic Health Cloud ({health_data['source']}).",
+                "notes": f"Daily activity synced from {health_data['source']}.",
                 "source": health_data["source"],
                 "logged_at": datetime.utcnow().isoformat()
             }
@@ -927,7 +927,7 @@ async def sync_validic_user_data(user_id: str):
                 "entry": entry,
                 "health_data": health_data,
                 "marketplace_url": user_info.get("marketplace_url"),
-                "message": f"Successfully synced {health_data['steps']} steps from Validic!"
+                "message": f"Successfully synced {health_data['steps']:,} steps from your connected device."
             }
         else:
             return {
@@ -935,7 +935,7 @@ async def sync_validic_user_data(user_id: str):
                 "synced": False,
                 "health_data": health_data,
                 "marketplace_url": user_info.get("marketplace_url"),
-                "message": "Validic connected. Complete your device pairing in the sync portal to stream data."
+                "message": "Connected. Complete your device pairing to sync daily activity."
             }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Validic sync failed: {str(e)}")

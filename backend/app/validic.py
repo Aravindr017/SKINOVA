@@ -111,7 +111,7 @@ async def fetch_validic_health_data(validic_user_id: str, target_date: Optional[
         "heart_rate_bpm": None,
         "sleep_hours": 0.0,
         "workout_minutes": 0,
-        "source": "Validic Cloud (Apple Health / Google Fit)",
+        "source": "Apple Health & Device Sync",
         "synced": False,
         "raw_summaries": []
     }
@@ -133,7 +133,7 @@ async def fetch_validic_health_data(validic_user_id: str, target_date: Optional[
                         result["calories_burned"] += float(s.get("calories", 0) or 0.0)
                         result["synced"] = True
                         if s.get("source"):
-                            result["source"] = f"Validic Cloud ({s.get('source').title()} Verified)"
+                            result["source"] = f"{s.get('source').replace('_', ' ').title()} (Verified)"
         except Exception as e:
             logger.warning(f"Error fetching Validic summaries: {e}")
 
