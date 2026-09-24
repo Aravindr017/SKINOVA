@@ -79,10 +79,16 @@ export function App() {
   const [scanHistory, setScanHistory] = useState(() => {
     try {
       const user = JSON.parse(localStorage.getItem('skinova_user'));
-      if (user?.id) {
-        return JSON.parse(localStorage.getItem(`skinova_scans_${user.id}`)) || [];
+      const raw = user?.id 
+        ? JSON.parse(localStorage.getItem(`skinova_scans_${user.id}`))
+        : JSON.parse(localStorage.getItem('skinova_scans'));
+      if (Array.isArray(raw)) {
+        return raw.map(s => ({
+          ...s,
+          previewUrl: (typeof s.previewUrl === 'string' && s.previewUrl.startsWith('blob:')) ? null : s.previewUrl
+        }));
       }
-      return JSON.parse(localStorage.getItem('skinova_scans')) || [];
+      return [];
     } catch { return []; }
   });
 
@@ -133,13 +139,24 @@ export function App() {
       let localScans = [];
       const userScans = localStorage.getItem(`skinova_scans_${currentUser.id}`);
       if (userScans) {
-        try { localScans = JSON.parse(userScans); } catch { localScans = []; }
+        try { 
+          const parsed = JSON.parse(userScans);
+          localScans = (Array.isArray(parsed) ? parsed : []).map(s => ({
+            ...s,
+            previewUrl: (typeof s.previewUrl === 'string' && s.previewUrl.startsWith('blob:')) ? null : s.previewUrl
+          }));
+        } catch { localScans = []; }
       } else {
         const legacy = localStorage.getItem('skinova_scans');
         if (legacy) {
           try {
             const parsed = JSON.parse(legacy);
-            localScans = parsed.filter(s => !s.userId || s.userId === currentUser.id);
+            localScans = (Array.isArray(parsed) ? parsed : [])
+              .filter(s => !s.userId || s.userId === currentUser.id)
+              .map(s => ({
+                ...s,
+                previewUrl: (typeof s.previewUrl === 'string' && s.previewUrl.startsWith('blob:')) ? null : s.previewUrl
+              }));
             localStorage.setItem(`skinova_scans_${currentUser.id}`, JSON.stringify(localScans));
           } catch { localScans = []; }
         }

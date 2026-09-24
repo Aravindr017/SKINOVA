@@ -1,9 +1,9 @@
 // ==========================================
-// SKINOVA - Progressive Web App Service Worker
-// Enables 100% Offline Loading & Standalone App Execution
+// SKINOVA - Progressive Web App Service Worker (v3)
+// 100% Offline Loading • Instant Cache Eviction • Zero CDN Reliance
 // ==========================================
 
-const CACHE_NAME = 'skinova-pwa-v2';
+const CACHE_NAME = 'skinova-pwa-v3';
 
 // Essential assets to cache immediately upon installation for 100% offline usage
 const PRECACHE_ASSETS = [
@@ -21,41 +21,69 @@ const PRECACHE_ASSETS = [
   '/wasm/ort-wasm-simd-threaded.mjs'
 ];
 
+// 1. Install Event: Cache assets and immediately activate
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      // Precache critical shell files, ignore any individual failures
       return Promise.allSettled(
         PRECACHE_ASSETS.map((url) =>
           cache.add(url).catch((err) => {
-            console.warn(`[SKINOVA SW] Precache skipped for ${url}:`, err);
+            console.warn(`[SKINOVA SW v3] Precache skipped for ${url}:`, err);
           })
         )
       );
-    }).then(() => self.skipWaiting())
+    })
   );
 });
 
+// 2. Activate Event: Immediately purge ALL older caches (v1, v2) and take control of all open tabs
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+        keys.map((key) => {
+          if (key !== CACHE_NAME) {
+            console.log(`[SKINOVA SW v3] Evicting stale cache: ${key}`);
+            return caches.delete(key);
+          }
+        })
       );
     }).then(() => self.clients.claim())
   );
 });
 
+// 3. Fetch Event
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Bypass non-GET requests and browser extensions
+  // Bypass non-GET requests and non-http(s) schemes
   if (request.method !== 'GET' || !url.protocol.startsWith('http')) {
     return;
   }
 
-  // Network-first for dynamic backend API endpoints
+  // A. Navigation / HTML Document requests: NETWORK-FIRST
+  // When online, always fetch the latest index.html so script hash updates load immediately.
+  // When offline, fall back to cached index.html.
+  if (request.mode === 'navigate' || request.headers.get('accept')?.includes('text/html')) {
+    event.respondWith(
+      fetch(request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+          }
+          return networkResponse;
+        })
+        .catch(() => {
+          return caches.match('/index.html') || caches.match('/');
+        })
+    );
+    return;
+  }
+
+  // B. Backend API endpoints (/api/): NETWORK-FIRST with offline JSON fallback
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
       fetch(request).catch(() => {
@@ -75,7 +103,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Cache-first strategy for static assets, WASM, ONNX models, and app shell
+  // C. Static Assets (WASM, Models, JS/CSS, Images): CACHE-FIRST
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
       if (cachedResponse) {
@@ -88,7 +116,6 @@ self.addEventListener('fetch', (event) => {
             return networkResponse;
           }
 
-          // Allow caching of local ('basic') and cross-origin ('cors') assets
           if (networkResponse.type === 'basic' || networkResponse.type === 'cors') {
             const responseToCache = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => {
@@ -99,11 +126,6 @@ self.addEventListener('fetch', (event) => {
           return networkResponse;
         })
         .catch(() => {
-          // If offline and request is for an HTML page, return cached index.html
-          if (request.headers.get('accept')?.includes('text/html')) {
-            return caches.match('/index.html') || caches.match('/');
-          }
-          // Return a safe 404 response object instead of undefined to satisfy event.respondWith
           return new Response('Resource unavailable offline', {
             status: 404,
             statusText: 'Not Found',

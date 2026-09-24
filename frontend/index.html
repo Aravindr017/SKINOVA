@@ -26,11 +26,22 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').then((reg) => {
-            console.log('[SKINOVA PWA] Service Worker registered for offline execution:', reg.scope);
+          navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then((reg) => {
+            console.log('[SKINOVA PWA] Service Worker registered (v3):', reg.scope);
+            // Check for updates immediately
+            reg.update();
           }).catch((err) => {
             console.warn('[SKINOVA PWA] Service Worker registration failed:', err);
           });
+        });
+
+        // Auto reload when a new service worker takes over to load latest assets
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (!refreshing) {
+            refreshing = true;
+            window.location.reload();
+          }
         });
       }
     </script>
