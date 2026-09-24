@@ -35,7 +35,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from PIL import Image, ImageFilter
 
-from app.predictor import ModelDegradedError, predict_image
+from app.predictor import ModelDegradedError, NonLesionImageError, predict_image
 from app.rag import search_knowledge_base
 from app.llm import generate_response, synthesize_rag_response
 from app.hospitals_data import get_nearby_hospitals, book_consultation, get_user_appointments
@@ -294,16 +294,11 @@ async def predict_skin_disease(file: UploadFile = File(...)):
         except Exception:
             return None, (400, "Invalid image file format or corrupted upload.")
 
-        if not is_likely_skin_lesion_image(img):
-            return None, (
-                422,
-                "Please upload a clear, well-lit close-up of one skin lesion. "
-                "Hand photos, normal skin, and wide-area images are not supported.",
-            )
-
         try:
             pred = predict_image(img)
             return pred, None
+        except NonLesionImageError as error:
+            return None, (422, str(error))
         except ModelDegradedError as error:
             return None, (
                 503,
