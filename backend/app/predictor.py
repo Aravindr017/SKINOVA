@@ -3,6 +3,7 @@
 # EfficientNet-B0 ONNX (FP32 / INT8)
 # ==========================================
 
+import os
 import logging
 from pathlib import Path
 
@@ -14,11 +15,16 @@ from PIL import Image
 logger = logging.getLogger("skinova.predictor")
 
 
-# ==========================================
 # Model Path Resolution
 # ==========================================
 
-MODEL_DIR = Path(__file__).resolve().parents[2] / "Model"
+_possible_dirs = [
+    Path(os.environ.get("MODEL_DIR", "")) if os.environ.get("MODEL_DIR") else None,
+    Path(__file__).resolve().parents[2] / "Model",
+    Path(__file__).resolve().parents[1] / "Model",
+    Path(__file__).resolve().parents[1] / "data" / "models"
+]
+MODEL_DIR = next((d for d in _possible_dirs if d and d.exists()), Path(__file__).resolve().parents[2] / "Model")
 
 KERAS_MODEL_PATH = MODEL_DIR / "skinova_efficientnetb0_best.keras"
 FIXED_MODEL_PATH = MODEL_DIR / "skinova_efficientnetb0_fixed.onnx"
