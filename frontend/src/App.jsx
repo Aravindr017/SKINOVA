@@ -567,8 +567,17 @@ export function App() {
           <div className="space-y-2.5 sm:space-y-3">
             {scanHistory.slice(0, 3).map(scan => (
               <div key={scan.id} className="flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors">
-                <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-slate-200">
-                  {scan.previewUrl && <img src={scan.previewUrl} alt="" className="w-full h-full object-cover" />}
+                <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-teal-50 border border-teal-100 flex items-center justify-center">
+                  {scan.previewUrl ? (
+                    <img 
+                      src={scan.previewUrl} 
+                      alt="" 
+                      className="w-full h-full object-cover" 
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    />
+                  ) : (
+                    <Sparkles size={16} className="text-teal-600" />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs sm:text-sm font-semibold text-slate-800 truncate">{scan.prediction}</p>

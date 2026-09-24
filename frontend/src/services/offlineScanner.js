@@ -74,20 +74,16 @@ export async function getOfflineSession() {
   sessionLoadingPromise = (async () => {
     try {
       // Configure ONNX runtime web for browser environment
-      // Try local self-hosted WASM first; if not found (e.g. on cloud host), use jsDelivr CDN
-      try {
-        const testResp = await fetch('/wasm/ort-wasm-simd-threaded.jsep.wasm', { method: 'HEAD' });
-        const contentType = testResp.headers.get('content-type') || '';
-        if (testResp.ok && (contentType.includes('wasm') || contentType.includes('octet-stream'))) {
-          ort.env.wasm.wasmPaths = '/wasm/';
-        } else {
-          ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/';
-        }
-      } catch {
-        ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/';
-      }
+      // On localhost, use local /wasm/; on cloud/Vercel, use official onnxruntime-web CDN (1.30.0)
+      const isLocal = typeof window !== 'undefined' && 
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
-      ort.env.wasm.numThreads = Math.min(navigator.hardwareConcurrency || 2, 4);
+      ort.env.wasm.wasmPaths = isLocal 
+        ? '/wasm/' 
+        : 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.30.0/dist/';
+
+      // Set to 1 thread for universal browser & mobile compatibility without crossOriginIsolated requirement
+      ort.env.wasm.numThreads = 1;
       ort.env.wasm.simd = true;
 
       // Model served from frontend public folder (4.39 MB)
@@ -115,8 +111,13 @@ export async function preprocessImageForONNX(imageSource) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
+    let tempBlobUrl = null;
 
     img.onload = () => {
+      if (tempBlobUrl) {
+        URL.revokeObjectURL(tempBlobUrl);
+        tempBlobUrl = null;
+      }
       try {
         const canvas = document.createElement('canvas');
         canvas.width = 240;
@@ -145,10 +146,17 @@ export async function preprocessImageForONNX(imageSource) {
       }
     };
 
-    img.onerror = () => reject(new Error('Failed to load image for offline processing.'));
+    img.onerror = () => {
+      if (tempBlobUrl) {
+        URL.revokeObjectURL(tempBlobUrl);
+        tempBlobUrl = null;
+      }
+      reject(new Error('Failed to load image for offline processing.'));
+    };
 
     if (imageSource instanceof File || imageSource instanceof Blob) {
-      img.src = URL.createObjectURL(imageSource);
+      tempBlobUrl = URL.createObjectURL(imageSource);
+      img.src = tempBlobUrl;
     } else if (typeof imageSource === 'string') {
       img.src = imageSource;
     } else {

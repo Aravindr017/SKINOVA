@@ -165,13 +165,18 @@ export default function UserHistory({
               ) : (
                 scanHistory.map(scan => (
                   <div key={scan.id} className="card p-3 sm:p-4 flex items-center gap-2.5 sm:gap-4 card-interactive group">
-                    <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-slate-100 border" style={{ borderColor: '#E2E8F0' }}>
+                    <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-slate-100 border flex items-center justify-center" style={{ borderColor: '#E2E8F0' }}>
                       {scan.previewUrl ? (
-                        <img src={scan.previewUrl} alt="" className="w-full h-full object-cover"/>
+                        <img 
+                          src={scan.previewUrl} 
+                          alt="" 
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Camera size={20} className="text-slate-400"/>
-                        </div>
+                        <Camera size={20} className="text-slate-400"/>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
