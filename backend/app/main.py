@@ -35,7 +35,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from PIL import Image
 
-from app.predictor import predict_image
+from app.predictor import ModelDegradedError, predict_image
 from app.rag import search_knowledge_base
 from app.llm import generate_response, synthesize_rag_response
 from app.hospitals_data import get_nearby_hospitals, book_consultation, get_user_appointments
@@ -186,7 +186,7 @@ def model_info():
             {"code": "DF",  "name": "Dermatofibroma", "risk": "Low Risk (Benign)"},
             {"code": "VASC","name": "Vascular Lesion", "risk": "Low Risk (Benign)"},
         ],
-        "input_resolution": "224x224x3 RGB",
+        "input_resolution": "240x240x3 RGB",
         "inference_engine": "ONNX Runtime with CPU/CUDA Execution Providers"
     }
 
@@ -264,6 +264,12 @@ async def predict_skin_disease(file: UploadFile = File(...)):
         try:
             pred = predict_image(img)
             return pred, None
+        except ModelDegradedError as error:
+            return None, (
+                503,
+                "The skin classifier is temporarily unavailable because "
+                f"its model health check failed: {error}",
+            )
         except Exception as error:
             return None, (500, f"Prediction failed: {str(error)}")
 
