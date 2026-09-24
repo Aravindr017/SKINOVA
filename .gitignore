@@ -39,6 +39,7 @@ MANIFEST
 
 # --- Virtual Environments ---
 .venv/
+.model-venv/
 venv/
 env/
 ENV/
