@@ -1,168 +1,216 @@
-# 🩺 SKINOVA AI — Dermatological Intelligence & Clinical Care Platform
+# 🩺 SKINOVA AI — Clinical Dermatological Screening & Telehealth Platform
 
+[![Live App on Vercel](https://img.shields.io/badge/Vercel-Live%20App-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://skinova-nu.vercel.app/)
+[![Backend on Render](https://img.shields.io/badge/Render-Backend%20API-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://skinova-backend-zgm6.onrender.com)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/React-18.3-61DAFB?logo=react&logoColor=black)](https://react.dev)
 [![Vite](https://img.shields.io/badge/Vite-6.1-646CFF?logo=vite&logoColor=white)](https://vitejs.dev)
-[![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.4-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
-[![ONNX Runtime](https://img.shields.io/badge/ONNX_Runtime-1.18+-005CED?logo=onnx&logoColor=white)](https://onnxruntime.ai)
-[![Python](https://img.shields.io/badge/Python-3.10%20|%203.11%20|%203.12%20|%203.14-3776AB?logo=python&logoColor=white)](https://www.python.org)
+[![WebAssembly](https://img.shields.io/badge/WASM-ONNX%20Web-654FF0?logo=webassembly&logoColor=white)](https://onnxruntime.ai)
+[![PWA](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?logo=pwa&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**SKINOVA AI** is an end-to-end, medical-grade dermatological screening, clinical AI consultation, and care-coordination platform. Combining transfer-learning Convolutional Neural Networks (**EfficientNet-B0 INT8/FP32**) with a Retrieval-Augmented Generation (**RAG**) Clinical Knowledge Engine and a Geo-Intelligent Specialist Finder, SKINOVA bridges the gap between early lesion triage and verified clinical care.
+**SKINOVA AI** is an enterprise-grade dermatological intelligence platform combining deep transfer-learning computer vision (**EfficientNet-B0**), **Google Gemini Multimodal Vision AI**, a **Retrieval-Augmented Generation (RAG)** clinical knowledge engine, and a **Geo-Spatial Specialist Triage Network**.
+
+Built as a Progressive Web Application (PWA), SKINOVA delivers **Dual-Engine Consensus** when connected to the internet, and **100% In-Browser Zero-Latency WebAssembly Inference** when operating offline in airplane mode or remote triage environments.
 
 ---
 
-## 🌟 Key Features
+## 🌐 Live Production Deployments
 
-### 1. 🔬 AI Skin Lesion Classifier (Computer Vision)
-- **Model Architecture**: Deep transfer-learning using **EfficientNet-B0** with INT8 dynamic quantization (reducing footprint to **4.39 MB** with sub-30ms inference latency).
-- **7-Class HAM10000 Triage**:
-  - `MEL`: Melanoma (*Malignant Melanocytic Skin Cancer*) — Critical / Urgent Triage
-  - `NV`: Melanocytic Nevus (*Common or Atypical Mole*) — Benign
-  - `BCC`: Basal Cell Carcinoma (*Non-Melanoma Keratinocyte Cancer*) — High Risk
-  - `AKIEC`: Actinic Keratosis / Intraepithelial Carcinoma (*Precancerous*) — High Risk
-  - `BKL`: Benign Keratosis (*Seborrheic Keratosis / Solar Lentigo*) — Benign
-  - `DF`: Dermatofibroma (*Benign Fibrous Histiocytoma*) — Benign
-  - `VASC`: Vascular Lesion (*Hemangioma / Pyogenic Granuloma*) — Benign
-- **Multi-Class Output**: Yields exact confidence scores, risk categories, clinical descriptions, and recommended consultation urgency.
+- **Frontend Application (Vercel)**: [https://skinova-nu.vercel.app/](https://skinova-nu.vercel.app/)
+- **Backend API & Swagger Docs (Render)**: [https://skinova-backend-zgm6.onrender.com/docs](https://skinova-backend-zgm6.onrender.com/docs)
+- **API Health Check**: [https://skinova-backend-zgm6.onrender.com/api/health](https://skinova-backend-zgm6.onrender.com/api/health)
 
-### 2. 💬 Multi-Tier Clinical AI Consultant (RAG Engine)
+---
+
+## ⚡ Dual-Engine AI Architecture
+
+SKINOVA features a hybrid clinical architecture engineered to provide maximum diagnostic accuracy when connected, while remaining completely resilient when internet access is unavailable:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           SKINOVA AI WORKFLOW                           │
+└────────────────────────────────────┬────────────────────────────────────┘
+                                     │ Upload Image
+                                     ▼
+                  ┌──────────────────────────────────────┐
+                  │      Multi-Stage Lesion Gatekeeper   │
+                  │ (Blocks walls, documents, portraits) │
+                  └──────────────────┬───────────────────┘
+                                     │ Valid Skin Lesion
+                                     ├────────────────────────────┐
+                                     │                            │
+                            [ Online Mode ]              [ Offline Mode ]
+                                     │                            │
+                                     ▼                            ▼
+                 ┌───────────────────────┐            ┌───────────────────────┐
+                 │ Cloud Dual-Engine     │            │ Client WebAssembly    │
+                 │ 1. Gemini Vision AI   │            │ 1. ONNX Runtime Web   │
+                 │ 2. EfficientNet-B0    │            │ 2. Local Knowledge    │
+                 └───────────┬───────────┘            └───────────┬───────────┘
+                             │                                    │
+                             └─────────────────┬──────────────────┘
+                                               │
+                                               ▼
+                              ┌─────────────────────────────────┐
+                              │  Clinical Triage & Differential │
+                              │  • 7-Class HAM10000 Breakdown   │
+                              │  • Risk Level & Urgency Rating  │
+                              │  • Specialists & Hospital Match │
+                              │  • Printable Clinical PDF       │
+                              └─────────────────────────────────┘
+```
+
+### 1. 🟢 Online Mode: Cloud AI Consensus
+- **Cloud Multimodal Vision (Google Gemini)**: Analyzes macroscopic ABCD criteria (Asymmetry, Border irregularity, Color variegation, Diameter) with advanced medical reasoning.
+- **Local Feature Embeddings (EfficientNet-B0)**: Generates 7-class feature embeddings.
+- **Consensus Fusion**: Merges multimodal vision with neural network embeddings to catch subtle malignant melanoma patterns that standard CNNs might under-diagnose.
+
+### 2. ⚡ Offline Mode: 100% On-Device WebAssembly Engine
+- **Zero Network Reliance**: Powered by `onnxruntime-web/wasm` executing directly inside the client's browser thread via single-threaded WebAssembly SIMD.
+- **Complete Privacy**: Zero patient data or medical photographs ever leave the user's device.
+- **Instant Latency**: Average inference speed of **~160 ms** on consumer laptop and smartphone hardware.
+- **PWA Service Worker (v5)**: Precaches the application shell, clinical knowledge base, and model weights so the app loads and functions even in full airplane mode.
+
+---
+
+## 🛡️ Clinical Lesion Gatekeeper (Anti-Hallucination)
+
+Standard neural networks with Softmax activations are closed-set: if fed an arbitrary image (e.g. a wall or paper), they are mathematically forced to output a disease prediction. SKINOVA eliminates this hazard through a multi-stage **Clinical Lesion Gatekeeper** running on both the frontend and backend:
+
+1. **Achromatic Document Detection**: Scans for high-density bright white backgrounds ($>35\%$ pixel area with $|R-G| < 16$ and $|G-B| < 16$). Immediately rejects paper forms, notebooks, and signed documents.
+2. **Surface Texture & Flatness Verification**: Evaluates pixel luminance standard deviation ($\sigma < 8.0$). Rejects flat plaster, painted walls, and uniform non-skin backdrops.
+3. **Biological Skin Chromaticity Check**: Enforces standard human skin tone ranges across Fitzpatrick skin types I through VI ($R > G > B$ with chromatic separation). Rejects cold grey surfaces, blue screens, and outdoor scenery.
+4. **Portrait / Passport Photo Boundary Check**: Analyzes horizontal image slices. Rejects face portraits and selfies where clothing occupies the bottom strip and hair occupies the upper boundary.
+
+---
+
+## 🔬 7-Class Disease Classification (WHO / HAM10000)
+
+SKINOVA classifies dermatological conditions across the international standard HAM10000 dataset:
+
+| Code | Disease Name | Category | Clinical Risk | Urgency Level |
+| :--- | :--- | :--- | :--- | :--- |
+| **MEL** | **Melanoma** | Malignant Skin Cancer | <span style="color:#ef4444; font-weight:bold;">Critical / Urgent Risk</span> | Immediate dermatological biopsy |
+| **BCC** | **Basal Cell Carcinoma** | Malignant Keratinocyte Cancer | <span style="color:#f97316; font-weight:bold;">High Risk</span> | Consult specialist within 1–2 weeks |
+| **AKIEC** | **Actinic Keratosis / Bowen's Disease** | Precancerous Intraepithelial Lesion | <span style="color:#f97316; font-weight:bold;">High Risk</span> | Consult specialist within 1–2 weeks |
+| **BKL** | **Benign Keratosis** (Seborrheic Keratosis / Solar Lentigo) | Benign / Non-Cancerous Growth | <span style="color:#10b981; font-weight:bold;">Low Risk</span> | Routine monitoring / standard consultation |
+| **NV** | **Melanocytic Nevus** (Common Mole) | Benign Proliferation of Melanocytes | <span style="color:#10b981; font-weight:bold;">Low Risk</span> | Annual checkup / ABCDE self-monitoring |
+| **DF** | **Dermatofibroma** | Benign Fibrous Histiocytoma | <span style="color:#10b981; font-weight:bold;">Low Risk</span> | Standard check if changing or painful |
+| **VASC** | **Vascular Lesion** (Angioma / Granuloma) | Benign Vascular Proliferation | <span style="color:#10b981; font-weight:bold;">Low Risk</span> | Routine check if bleeding or irritated |
+
+---
+
+## 🌟 Key Platform Features
+
+### 1. 💬 RAG Clinical AI Consultant
 - **Medical Grounding**: Indexed with **WHO ICD-11** guidelines and the **DermNet New Zealand Clinical Knowledge Base**.
-- **Vector Search**: Local vector embeddings powered by `sentence-transformers` (`all-MiniLM-L6-v2`) and **FAISS-CPU** indexing.
-- **Multi-LLM Resilience**:
-  - **Tier 1 (Google Gemini)**: Cloud-based reasoning via Gemini 1.5 Flash API (`GEMINI_API_KEY`).
-  - **Tier 2 (OpenAI)**: GPT-4o / GPT-3.5 fallback via `OPENAI_API_KEY`.
-  - **Tier 3 (Local Ollama)**: Self-hosted local inference with models like `qwen2.5:0.5b` or `llama3`.
-  - **Tier 4 (Offline Clinical Synthesis Engine)**: Zero-dependency structured medical consultations with biological context, ABCDE criteria, differential guidance, and emergency red-flags.
-- **Security**: Built-in prompt injection sanitization and clinical disclaimer guards.
+- **Vector Search**: Semantic vector search powered by `sentence-transformers` (`all-MiniLM-L6-v2`) and FAISS-CPU.
+- **Multi-LLM Fallback**: Google Gemini 3.5/2.5 Flash -> OpenAI GPT-4o -> Local Ollama (`qwen2.5`) -> Zero-dependency Offline Clinical Synthesis Engine.
 
-### 3. 📍 Geo-Intelligent Hospital & Dermatologist Finder
-- **Authentic Facility Directory**: Features verified specialty centers and cutaneous oncology departments in **Thiruvananthapuram (RCC, MCH, KIMS, Cosmo, Ananthapuri, SUT, Kaya)**, Kochi, Coimbatore, Chennai, Bengaluru, Mumbai, and Delhi.
-- **Real-Time Geolocation**: High-accuracy HTML5 Geolocation with automatic fallback to HTTPS IP Geolocation (`ipwho.is`).
-- **Live OpenStreetMap Overpass**: Dynamically retrieves live nearby hospitals, clinics, and dermatologists within a 15–25 km radius.
-- **Proximity-First Risk Triage**: High-risk lesions (e.g. Melanoma) prioritize local cutaneous oncology and Mohs surgery centers (e.g., Regional Cancer Centre Trivandrum at 0.88 km) without routing patients hundreds of kilometers away.
+### 2. 📍 Geo-Intelligent Specialist & Hospital Finder
+- **Authentic Facility Directory**: Features verified specialty centers, dermatology clinics, and cutaneous oncology centers across major hubs (Thiruvananthapuram RCC/MCH/KIMS, Kochi, Chennai, Bengaluru, Mumbai, Delhi).
+- **Proximity-First Risk Triage**: Critical-risk scans (Melanoma) prioritize oncology and Mohs surgery centers within immediate radius.
+- **OpenStreetMap Integration**: Dynamic live Overpass API query for real-time nearby clinics.
 
-### 4. 🏃 Health & Fit Activity Tracker
-- **Mobile Integration**:
-  - **Phone Screen Sync**: Quick-input modal to enter steps, active calories, water intake, heart rate, and sleep directly from Apple Health (iOS) or Google Fit (Android).
-  - **File Importer**: Direct XML/JSON export ingestion from Apple Health and Google Takeout.
-- **Skin Health Calculators**: Built-in UV index sun-protection advisor, daily water hydration calculator based on weight/activity, and calorie expenditure tracking.
+### 3. 📄 Clinical PDF Report Generator
+- **One-Click Export**: Generates printable medical reports with macro photos, differential probability charts, ABCDE clinical findings, and physician referral notes using `jsPDF` and `html2canvas`.
 
-### 5. 📄 Patient Clinical Report Generator & Vault
-- **One-Click Clinical PDF**: Generates professional, printable clinical summary reports (incorporating lesion macro photos, top-3 class breakdown, ABCDE risk assessment, and recommended next steps) using `jsPDF` and `html2canvas`.
-- **History & Scans Management**: Local & server-backed scan history with instant "Clear Scans" control.
-
-### 6. 📅 In-App Consultation Booking
-- Real-time appointment scheduling with selected specialists and hospitals.
-- Generates persistent confirmation booking IDs (`SKN-YYYYMMDD-XXXXXX`) tracked under the patient's profile.
-
-### 7. 👤 User Profile, Security & Google Authentication
-- Complete profile customization: edit display names, emergency contact numbers, blood group, skin type, and avatar photos.
-- Configurable **Google OAuth 2.0** login with clear in-app setup instructions for Google Cloud Console client credentials.
+### 4. 🏃 Health & Activity Tracking
+- **Apple Health & Google Fit Sync**: Quick-input modal and JSON/XML importer for steps, active calories, water intake, and heart rate.
+- **Sun & UV Protection**: Dynamic UV index protection advisor and daily hydration requirement calculator.
 
 ---
 
-## 🏗️ Architecture & Technology Stack
+## 🏗️ Repository Architecture & File Directory
 
 ```
 SKINOVA/
-├── Model/                      # Trained models & quantization scripts
-│   ├── skinova_efficientnetb0.onnx        # Standard FP32 model (16.5 MB)
-│   ├── skinova_efficientnetb0_int8.onnx   # Quantized INT8 model (4.39 MB)
-│   └── quantize_onnx.py                   # Dynamic INT8 ONNX quantizer
-├── backend/                    # FastAPI High-Performance Backend
+├── Model/                               # Machine Learning checkouts & models
+│   ├── skinova_efficientnetb0_best.keras# Trained Keras checkpoint (32.9 MB)
+│   ├── skinova_efficientnetb0_fixed.onnx# Re-exported FP32 ONNX model (17.4 MB)
+│   ├── skinova_efficientnetb0.onnx      # Primary ONNX baseline
+│   ├── quantize_onnx.py                 # INT8 dynamic quantization script
+│   └── Skinova_AI_skin_disease_detection.ipynb # Research & training notebook
+├── backend/                             # High-performance FastAPI backend
 │   ├── app/
-│   │   ├── main.py             # API routers, endpoints, CORS, file upload
-│   │   ├── predictor.py        # ONNX inference pipeline & metadata
-│   │   ├── llm.py              # Clinical AI Consultant & LLM orchestrator
-│   │   ├── rag.py              # Semantic vector search & FAISS index
-│   │   ├── hospitals_data.py   # Verified hospitals database & OSM queries
-│   │   └── data/               # Knowledge base chunks & prebuilt embeddings
-│   ├── uploads/                # Temporary image uploads
-│   └── requirements.txt        # Backend Python dependencies
-├── frontend/                   # Modern React + Vite Web Application
+│   │   ├── main.py                      # FastAPI app, endpoints, gatekeepers, CORS
+│   │   ├── predictor.py                 # Dual-Engine ONNX inference & Gemini screener
+│   │   ├── llm.py                       # Clinical AI Consultant & LLM orchestrator
+│   │   ├── rag.py                       # Semantic search & FAISS vector retriever
+│   │   ├── hospitals_data.py            # Verified hospital database & OSM Overpass queries
+│   │   ├── storage.py                   # User activity & appointment persistence
+│   │   └── validic.py                   # Health IoT & fitness data integration
+│   ├── data/                            # Knowledge base chunks & prebuilt embeddings
+│   ├── uploads/                         # Temporary upload directory
+│   ├── requirements.txt                 # Backend Python dependencies
+│   └── .env.example                     # Backend environment template
+├── frontend/                            # React + Vite Progressive Web App
+│   ├── public/
+│   │   ├── models/
+│   │   │   └── skinova_efficientnetb0.onnx # On-device WebAssembly model (17.4 MB)
+│   │   ├── wasm/
+│   │   │   ├── ort-wasm-simd-threaded.wasm # ONNX WebAssembly engine binary (14.2 MB)
+│   │   │   └── ort-wasm-simd-threaded.mjs  # WebAssembly JS loader (24 KB)
+│   │   ├── data/
+│   │   │   └── clinicalKnowledge.json   # Offline clinical knowledge base
+│   │   ├── sw.js                        # Service worker (skinova-pwa-v5 offline precache)
+│   │   ├── manifest.json                # PWA manifest
+│   │   ├── icon-192.png                 # PWA App icon 192x192
+│   │   └── icon-512.png                 # PWA App icon 512x512
 │   ├── src/
-│   │   ├── components/         # Modular UI components
-│   │   │   ├── DiagnosisCard.jsx   # Lesion risk display & probability bars
-│   │   │   ├── ImageUploader.jsx   # Drag-and-drop lesion uploader
-│   │   │   ├── RAGChatbot.jsx      # AI Clinical Consultant dialogue
-│   │   │   ├── HospitalFinder.jsx  # Geo-spatial hospital & doctor search
-│   │   │   ├── HealthDashboard.jsx # Apple Health / Google Fit tracker
-│   │   │   ├── UserProfile.jsx     # Profile & privacy settings
-│   │   │   ├── BookingModal.jsx    # Doctor appointment scheduling
-│   │   │   ├── ReportModal.jsx     # Clinical PDF report generator
-│   │   │   └── AuthModal.jsx       # Email & Google Sign-In modal
-│   │   ├── utils/              # Location, disease metadata, and helpers
-│   │   ├── services/api.js     # Axios API client wrapper
-│   │   ├── App.jsx             # Main application state and layout
-│   │   └── index.css           # Custom medical-theme design system
-│   ├── package.json            # Node.js dependencies
-│   └── vite.config.js          # Vite build configuration
-├── start.sh                    # Unified startup script (macOS / Linux)
-├── start.bat                   # Unified startup script (Windows)
-├── requirements.txt            # Root Python dependencies
-└── README.md                   # Complete documentation
+│   │   ├── components/                  # UI components
+│   │   │   ├── ImageUploader.jsx        # Drag-and-drop lesion scanner & camera capture
+│   │   │   ├── DiagnosisCard.jsx        # Probability breakdown, risk badges, urgency
+│   │   │   ├── RAGChatbot.jsx           # AI Clinical Consultant dialogue interface
+│   │   │   ├── HospitalFinder.jsx       # Interactive hospital & specialist locator
+│   │   │   ├── HealthDashboard.jsx      # Activity rings, health logs, UV advisor
+│   │   │   ├── BookingModal.jsx         # In-app appointment booking dialog
+│   │   │   ├── ReportModal.jsx          # PDF clinical summary generator
+│   │   │   ├── AuthModal.jsx            # User authentication & Google Sign-In
+│   │   │   ├── UserProfile.jsx          # Profile settings, scan history, bookings
+│   │   │   ├── Navbar.jsx               # Navigation bar with online/offline status pill
+│   │   │   └── InteractiveBackground.jsx# Ambient clinical gradient canvas
+│   │   ├── services/
+│   │   │   ├── api.js                   # Axios HTTP client with sanitization
+│   │   │   └── offlineScanner.js        # WebAssembly ONNX inference & on-device gatekeeper
+│   │   ├── utils/
+│   │   │   └── location.js              # HTML5 & IP geolocation resolution
+│   │   ├── App.jsx                      # Main app state, routing, and scan handler
+│   │   ├── main.jsx                     # React DOM entry point & SW registration
+│   │   └── index.css                    # Custom medical design system & Tailwind tokens
+│   ├── package.json                     # Frontend dependencies
+│   └── vite.config.js                   # Vite bundler configuration
+├── start.sh                             # Automated startup script (macOS / Linux)
+├── start.bat                            # Automated startup script (Windows)
+├── render.yaml                          # Render cloud deployment specification
+└── README.md                            # Comprehensive project documentation
 ```
 
-### Frameworks & Tools
-
-| Component | Framework / Tool | Version | Purpose |
-| :--- | :--- | :--- | :--- |
-| **Backend Framework** | **FastAPI** | `>= 0.115.0` | Asynchronous REST API routing & validation |
-| **ASGI Server** | **Uvicorn** | `>= 0.30.0` | Production ASGI web server |
-| **Validation** | **Pydantic** | `>= 2.8.0` | Data schemas & request/response validation |
-| **Deep Learning** | **ONNX Runtime** | `>= 1.18.0` | Fast CPU-optimized deep learning inference |
-| **Image Processing** | **Pillow / OpenCV** | `>= 10.4.0` | Image conversion, resizing, and normalization |
-| **Vector Search** | **FAISS-CPU** | `>= 1.8.0` | Dense vector similarity search for RAG |
-| **Embeddings** | **Sentence-Transformers**| `>= 3.0.0` | Sentence embeddings (`all-MiniLM-L6-v2`) |
-| **Frontend Framework**| **React** | `18.3.1` | Reactive declarative UI components |
-| **Build Tool** | **Vite** | `6.1.0` | Instant HMR development & optimized bundle |
-| **Styling** | **TailwindCSS** | `3.4.17` | Utility-first CSS with medical design tokens |
-| **Icons** | **Lucide React** | `0.475.0` | Modern, consistent SVG iconography |
-| **Charts** | **Recharts** | `3.10.1` | Activity rings, bar charts, and trends |
-| **PDF Generation** | **jsPDF & html2canvas** | `2.5.2` / `1.4.1` | In-browser clinical summary export |
-| **Maps & Geo** | **Overpass API / Leaflet** | Live REST | OpenStreetMap healthcare node querying |
-
 ---
 
-## ⚙️ System Requirements
+## 🚀 Local Development Setup
 
-- **Python**: `3.10`, `3.11`, `3.12`, or `3.14`
-- **Node.js**: `>= 18.0.0` (npm `>= 9.0.0`)
-- **Memory**: 4 GB RAM minimum (8 GB recommended)
-- **OS**: macOS, Ubuntu/Debian Linux, or Windows 10/11
-
----
-
-## 🚀 Quick Start Guide
-
-### Method 1: One-Click Startup Script (Recommended)
+### Option 1: Automated Script (Recommended)
 
 #### On macOS / Linux:
 ```bash
-# 1. Clone the repository
-git clone https://github.com/Aravindr017/SKINOVA.git
-cd SKINOVA
-
-# 2. Make the script executable and run
 chmod +x start.sh
 ./start.sh
 ```
 
 #### On Windows:
 ```cmd
-# Double click start.bat or execute from Command Prompt:
 start.bat
 ```
 
-*The startup script will automatically check Python & Node.js, create the Python virtual environment in `backend/.venv`, install requirements, install npm packages in `frontend/`, and launch both servers simultaneously!*
-
+*The automated script checks Python & Node.js environments, installs missing packages, initializes the virtual environment, and launches both frontend and backend concurrently.*
 
 ---
 
-### Method 2: Manual Setup
+### Option 2: Manual Installation
 
-#### Step 1: Backend Setup
+#### 1. Backend Setup:
 ```bash
 cd backend
 
@@ -170,103 +218,83 @@ cd backend
 python3 -m venv .venv
 source .venv/bin/activate       # On Windows: .venv\Scripts\activate
 
-# Upgrade pip and install dependencies
+# Install dependencies
 pip install --upgrade pip
 pip install -r requirements.txt
 
-# (Optional) Set API keys for cloud LLM reasoning
-export GEMINI_API_KEY="your-gemini-key"      # Optional: Google Gemini
-export OPENAI_API_KEY="your-openai-key"      # Optional: OpenAI
-
-# Start FastAPI server
+# Start backend server
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-#### Step 2: Frontend Setup (Open a new terminal)
+#### 2. Frontend Setup:
 ```bash
 cd frontend
 
-# Install Node dependencies
+# Install dependencies
 npm install
 
-# Start Vite development server
+# Start Vite dev server
 npm run dev
 ```
 
-Visit **http://localhost:5173** in your web browser.
+Open **http://localhost:5173** in your browser.
 
 ---
 
-## 🔑 Environment Variables & Optional Configurations
+## 🔑 Environment Configuration
 
-Create a `.env` file in the root or `backend/` directory if you wish to configure external AI services:
-
+Create a `.env` file in `backend/`:
 ```env
-# Optional: Google Gemini API (Enables cloud-based consultant reasoning)
-GEMINI_API_KEY=your_google_gemini_api_key
+# Google Gemini API Key (Enables Cloud AI Consensus & Consultant)
+GEMINI_API_KEY=your_gemini_api_key
 
-# Optional: OpenAI API Key
+# Google OAuth Credentials (Optional: enables Google login verification)
+GOOGLE_CLIENT_ID=your_client_id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your_client_secret
+
+# Optional: OpenAI API Fallback
 OPENAI_API_KEY=your_openai_api_key
 
-# Optional: Local Ollama URL (defaults to http://localhost:11434/api/chat)
+# Optional: Local Ollama URL
 OLLAMA_URL=http://localhost:11434/api/chat
 OLLAMA_MODEL=qwen2.5:0.5b
 ```
 
-Create a `.env` file in `frontend/` for Google Sign-In (optional):
+Create a `.env` file in `frontend/`:
 ```env
-# Google OAuth Client ID (from Google Cloud Console)
-VITE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+# Backend API Base URL
+VITE_API_URL=http://localhost:8000
+
+# Google OAuth Client ID
+VITE_GOOGLE_CLIENT_ID=your_client_id.apps.googleusercontent.com
 ```
-*Note: If no API keys are provided, SKINOVA seamlessly operates using its built-in offline Clinical Synthesis Engine and local ONNX model without any external network dependency.*
 
 ---
 
-## 📡 REST API Reference
+## 📡 REST API Specification
 
-The interactive OpenAPI documentation is accessible at `http://localhost:8000/docs`.
-
-### Core Endpoints
+Interactive Swagger UI documentation is available at `http://localhost:8000/docs` or `https://skinova-backend-zgm6.onrender.com/docs`.
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `POST` | `/api/predict` | Uploads an image file (`multipart/form-data`) and returns 7-class prediction & risk |
-| `POST` | `/api/chat` | Queries the RAG Clinical Consultant with query and optional predicted class |
-| `GET` | `/api/hospitals/nearby` | Geospatial hospital search with `lat`, `lon`, `city`, `risk_level`, and `specialty` |
-| `POST` | `/api/appointments/book` | Creates and persists a patient appointment booking |
-| `GET` | `/api/appointments/user` | Retrieves confirmed appointments filtered by email |
-| `GET` | `/api/knowledge/categories` | Lists all indexed medical knowledge categories and topics |
-| `GET` | `/api/knowledge/search` | Performs direct semantic similarity search over indexed chunks |
-| `POST` | `/api/health/log` | Stores daily health & fitness metrics |
-| `GET` | `/api/health/logs` | Fetches historical health records for a user |
-| `GET` | `/api/health/summary` | Calculates 7-day averages for steps, hydration, and calories |
-
----
-
-## 🧪 Model Performance & Evaluation
-
-The EfficientNet-B0 model was trained on the HAM10000 dataset using stratified splits (80% Train, 10% Validation, 10% Test) with Albumentations offline augmentation for class balancing:
-
-- **Overall Test Accuracy**: **81.04%**
-- **Test Loss**: **0.5134**
-- **Weighted F1-Score**: **80.78%**
-- **Class-Level F1-Scores**:
-  - `DF` (Dermatofibroma): **0.9000**
-  - `NV` (Melanocytic Nevi): **0.9057**
-  - `VASC` (Vascular Lesions): **0.7407**
-  - `BCC` (Basal Cell Carcinoma): **0.7170**
-  - `AKIEC` (Actinic Keratosis): **0.6027**
-  - `MEL` (Melanoma): **0.5520**
-  - `BKL` (Benign Keratosis): **0.5729**
+| `POST` | `/api/predict` | Upload an image file (`multipart/form-data`) for 7-class prediction and risk classification |
+| `POST` | `/api/chat` | Query the RAG Clinical Consultant with user questions and lesion context |
+| `GET` | `/api/hospitals/nearby` | Query nearby hospitals and dermatologists with coordinates and risk level |
+| `POST` | `/api/appointments/book` | Book an appointment with a specialist |
+| `GET` | `/api/appointments/user` | Fetch booked appointments by email |
+| `GET` | `/api/knowledge/search` | Search indexed WHO / DermNet clinical knowledge chunks |
+| `POST` | `/api/health/log` | Record daily fitness metrics (steps, water, sleep, calories) |
+| `GET` | `/api/health/summary` | Fetch 7-day fitness averages and skin health scores |
+| `GET` | `/api/health` | Health check endpoint |
 
 ---
 
 ## ⚠️ Medical Disclaimer
 
-> **IMPORTANT**: SKINOVA AI is an experimental computer vision and educational screening tool designed for clinical decision-support and triage awareness. **It is NOT a medical device, nor does it replace professional dermatological diagnosis, dermoscopy, or histological biopsy.** Always consult a certified dermatologist or licensed medical physician for any concerning skin lesion, changing mole, or persistent skin abnormality.
+> **IMPORTANT CLINICAL NOTICE**: SKINOVA AI is an experimental computer vision and clinical decision-support tool created for educational, triage awareness, and preliminary screening purposes. **It does NOT provide a definitive medical diagnosis and is NOT a substitute for professional clinical judgment, dermoscopy, or biopsy.** If you have a changing mole, persistent rash, bleeding growth, or suspicious skin abnormality, consult a board-certified dermatologist or qualified healthcare physician immediately.
 
 ---
 
 ## 📄 License
 
-This project is licensed under the [MIT License](LICENSE).
+This platform is open-source under the [MIT License](LICENSE).
