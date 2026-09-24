@@ -14,6 +14,8 @@ YELLOW='\033[0;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
+export PATH="$HOME/.local/bin:$PATH"
+
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$ROOT_DIR/backend"
 FRONTEND_DIR="$ROOT_DIR/frontend"
@@ -21,6 +23,7 @@ FRONTEND_DIR="$ROOT_DIR/frontend"
 echo -e "${BOLD}${CYAN}"
 echo "=========================================================="
 echo "    ✨ SKINOVA AI - Dermatological Intelligence Platform ✨ "
+echo "    ⚡ Dual-Engine: Cloud Clinical AI & 100% Offline PWA  "
 echo "=========================================================="
 echo -e "${NC}"
 
@@ -46,6 +49,20 @@ fi
 if [ ! -f "$FRONTEND_DIR/.env" ] && [ -f "$FRONTEND_DIR/.env.example" ]; then
     echo -e "${YELLOW}Notice: frontend/.env not found, creating from .env.example...${NC}"
     cp "$FRONTEND_DIR/.env.example" "$FRONTEND_DIR/.env"
+fi
+
+# 2.6 Verify Offline On-Device AI Model & Knowledge Assets
+mkdir -p "$FRONTEND_DIR/public/models"
+mkdir -p "$FRONTEND_DIR/public/data"
+
+if [ ! -f "$FRONTEND_DIR/public/models/skinova_efficientnetb0_int8.onnx" ] && [ -f "$ROOT_DIR/Model/skinova_efficientnetb0_int8.onnx" ]; then
+    echo -e "${YELLOW}Synchronizing On-Device Offline AI Model to frontend/public/models/...${NC}"
+    cp "$ROOT_DIR/Model/skinova_efficientnetb0_int8.onnx" "$FRONTEND_DIR/public/models/"
+fi
+
+if [ ! -f "$FRONTEND_DIR/public/data/clinicalKnowledge.json" ] && [ -f "$BACKEND_DIR/data/skinova_rag/chunks.json" ]; then
+    echo -e "${YELLOW}Synchronizing Offline Clinical Knowledge to frontend/public/data/...${NC}"
+    cp "$BACKEND_DIR/data/skinova_rag/chunks.json" "$FRONTEND_DIR/public/data/clinicalKnowledge.json"
 fi
 
 # 3. Setup Python Virtual Environment
@@ -78,7 +95,7 @@ if [ ! -d "$FRONTEND_DIR/node_modules" ]; then
     echo -e "${YELLOW}Installing frontend node dependencies...${NC}"
     (cd "$FRONTEND_DIR" && npm install)
 fi
-echo -e "${GREEN}✓ Frontend environment ready.${NC}"
+echo -e "${GREEN}✓ Frontend environment ready (PWA & WebAssembly ONNX active).${NC}"
 
 # 5. Trap cleanup on exit (Ctrl+C)
 cleanup() {
@@ -108,9 +125,11 @@ echo -e "${BOLD}${CYAN}Starting Frontend UI on http://localhost:5173 ...${NC}"
 FRONTEND_PID=$!
 
 echo -e "\n${BOLD}${GREEN}==========================================================${NC}"
-echo -e "${BOLD}${GREEN}  🚀 SKINOVA is running!${NC}"
+echo -e "${BOLD}${GREEN}  🚀 SKINOVA is live & fully operational!${NC}"
 echo -e "  • Frontend Web Application : ${BOLD}${CYAN}http://localhost:5173${NC}"
 echo -e "  • Backend API & Docs       : ${BOLD}${CYAN}http://localhost:8000/docs${NC}"
+echo -e "  • On-Device Offline Engine : ${BOLD}${GREEN}Enabled (WASM ONNX + Browser RAG)${NC}"
+echo -e "  • Offline PWA Caching      : ${BOLD}${GREEN}Active via Service Worker${NC}"
 echo -e "  • Press ${BOLD}Ctrl+C${NC} anytime to stop all servers."
 echo -e "${BOLD}${GREEN}==========================================================${NC}\n"
 

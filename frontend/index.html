@@ -7,6 +7,10 @@
     <title>SKINOVA AI – Dermatological Diagnosis & Specialist Care</title>
     <meta name="description" content="AI-powered skin lesion screening with EfficientNet-B0, WHO-grounded RAG consultation, and real-time dermatologist finder & booking." />
     <meta name="theme-color" content="#0D9488"/>
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="SKINOVA" />
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,6 +20,18 @@
     <div id="root"></div>
     <!-- Google Identity Services -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <!-- Register Service Worker for 100% Offline Capability -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').then((reg) => {
+            console.log('[SKINOVA PWA] Service Worker registered for offline execution:', reg.scope);
+          }).catch((err) => {
+            console.warn('[SKINOVA PWA] Service Worker registration failed:', err);
+          });
+        });
+      }
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

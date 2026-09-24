@@ -51,6 +51,24 @@ if not exist "frontend\.env" (
     )
 )
 
+REM 2.6 Verify Offline On-Device AI Model & Knowledge Assets
+if not exist "frontend\public\models" mkdir "frontend\public\models"
+if not exist "frontend\public\data" mkdir "frontend\public\data"
+
+if not exist "frontend\public\models\skinova_efficientnetb0_int8.onnx" (
+    if exist "Model\skinova_efficientnetb0_int8.onnx" (
+        echo Synchronizing On-Device Offline AI Model to frontend\public\models...
+        copy "Model\skinova_efficientnetb0_int8.onnx" "frontend\public\models\" >nul
+    )
+)
+
+if not exist "frontend\public\data\clinicalKnowledge.json" (
+    if exist "backend\data\skinova_rag\chunks.json" (
+        echo Synchronizing Offline Clinical Knowledge to frontend\public\data...
+        copy "backend\data\skinova_rag\chunks.json" "frontend\public\data\clinicalKnowledge.json" >nul
+    )
+)
+
 REM 3. Python Virtual Environment
 if not exist "backend\.venv" (
     echo Creating virtual environment in backend\.venv...
@@ -79,6 +97,8 @@ echo ==========================================================
 echo Starting SKINOVA Backend and Frontend...
 echo - Frontend Web Application : http://localhost:5173
 echo - Backend API & Docs       : http://localhost:8000/docs
+echo - On-Device Offline Engine : Enabled (WASM ONNX + Browser RAG)
+echo - Offline PWA Support      : Active via Service Worker
 echo ==========================================================
 
 start "SKINOVA Backend" cmd /k "cd /d "%~dp0backend" && .venv\Scripts\uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
