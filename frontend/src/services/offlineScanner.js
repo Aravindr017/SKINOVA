@@ -73,16 +73,9 @@ export async function getOfflineSession() {
 
   sessionLoadingPromise = (async () => {
     try {
-      // Configure ONNX runtime web for browser environment
-      // On localhost, use local /wasm/; on cloud/Vercel, use official onnxruntime-web CDN (1.30.0)
-      const isLocal = typeof window !== 'undefined' && 
-        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-
-      ort.env.wasm.wasmPaths = isLocal 
-        ? '/wasm/' 
-        : 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.30.0/dist/';
-
-      // Set to 1 thread for universal browser & mobile compatibility without crossOriginIsolated requirement
+      // Configure ONNX runtime web to load local self-hosted WASM files
+      // 100% offline, zero reliance on external CDNs or network connectivity
+      ort.env.wasm.wasmPaths = '/wasm/';
       ort.env.wasm.numThreads = 1;
       ort.env.wasm.simd = true;
 

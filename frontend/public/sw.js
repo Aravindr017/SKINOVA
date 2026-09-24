@@ -3,15 +3,22 @@
 // Enables 100% Offline Loading & Standalone App Execution
 // ==========================================
 
-const CACHE_NAME = 'skinova-pwa-v1';
+const CACHE_NAME = 'skinova-pwa-v2';
 
-// Essential assets to cache immediately upon installation
+// Essential assets to cache immediately upon installation for 100% offline usage
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/favicon.ico',
   '/data/clinicalKnowledge.json',
-  '/models/skinova_efficientnetb0_int8.onnx'
+  '/models/skinova_efficientnetb0_int8.onnx',
+  '/wasm/ort-wasm-simd-threaded.jsep.wasm',
+  '/wasm/ort-wasm-simd-threaded.jsep.mjs',
+  '/wasm/ort-wasm-simd-threaded.wasm',
+  '/wasm/ort-wasm-simd-threaded.mjs'
 ];
 
 self.addEventListener('install', (event) => {
@@ -81,7 +88,7 @@ self.addEventListener('fetch', (event) => {
             return networkResponse;
           }
 
-          // Allow caching of local ('basic') and cross-origin CDN ('cors') assets
+          // Allow caching of local ('basic') and cross-origin ('cors') assets
           if (networkResponse.type === 'basic' || networkResponse.type === 'cors') {
             const responseToCache = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => {
@@ -96,6 +103,12 @@ self.addEventListener('fetch', (event) => {
           if (request.headers.get('accept')?.includes('text/html')) {
             return caches.match('/index.html') || caches.match('/');
           }
+          // Return a safe 404 response object instead of undefined to satisfy event.respondWith
+          return new Response('Resource unavailable offline', {
+            status: 404,
+            statusText: 'Not Found',
+            headers: { 'Content-Type': 'text/plain' }
+          });
         });
     })
   );

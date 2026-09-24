@@ -172,38 +172,40 @@ export function App() {
       setBookedAppointments(localAppts);
 
       // 4. Bi-Directional Cloud Sync (Sync across all devices with same Google Account)
-      api.syncUserActivity?.({
-        userId: currentUser.id,
-        email: currentUser.email,
-        scans: localScans,
-        searches: localSearches,
-        appointments: localAppts,
-      }).then(res => {
-        if (res?.activity) {
-          const act = res.activity;
-          if (Array.isArray(act.scans)) {
-            setScanHistory(act.scans);
-            localStorage.setItem(`skinova_scans_${currentUser.id}`, JSON.stringify(act.scans));
+      if (effectiveOnline) {
+        api.syncUserActivity?.({
+          userId: currentUser.id,
+          email: currentUser.email,
+          scans: localScans,
+          searches: localSearches,
+          appointments: localAppts,
+        }).then(res => {
+          if (res?.activity) {
+            const act = res.activity;
+            if (Array.isArray(act.scans)) {
+              setScanHistory(act.scans);
+              localStorage.setItem(`skinova_scans_${currentUser.id}`, JSON.stringify(act.scans));
+            }
+            if (Array.isArray(act.searches)) {
+              setSearchHistory(act.searches);
+              localStorage.setItem(`skinova_searches_${currentUser.id}`, JSON.stringify(act.searches));
+            }
+            if (Array.isArray(act.appointments)) {
+              setBookedAppointments(act.appointments);
+              localStorage.setItem(`skinova_appointments_${currentUser.id}`, JSON.stringify(act.appointments));
+            }
           }
-          if (Array.isArray(act.searches)) {
-            setSearchHistory(act.searches);
-            localStorage.setItem(`skinova_searches_${currentUser.id}`, JSON.stringify(act.searches));
-          }
-          if (Array.isArray(act.appointments)) {
-            setBookedAppointments(act.appointments);
-            localStorage.setItem(`skinova_appointments_${currentUser.id}`, JSON.stringify(act.appointments));
-          }
-        }
-      }).catch(err => {
-        console.warn('Cross-device cloud sync background warning:', err?.message || err);
-      });
+        }).catch(err => {
+          console.warn('Cross-device cloud sync background warning:', err?.message || err);
+        });
+      }
     } else {
       // Clean slate when signed out for security and privacy
       setScanHistory([]);
       setSearchHistory([]);
       setBookedAppointments([]);
     }
-  }, [currentUser?.id, currentUser?.email]);
+  }, [currentUser?.id, currentUser?.email, effectiveOnline]);
 
   // ── Effects ──────────────────────────────────────────────
   useEffect(() => {

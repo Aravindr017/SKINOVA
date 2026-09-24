@@ -37,6 +37,10 @@ export default function DiagnosisCard({
   useEffect(() => {
     let isMounted = true;
     const fetchRecommendations = async () => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        setLoadingHospitals(false);
+        return;
+      }
       setLoadingHospitals(true);
       try {
         const lat = userLocation?.lat;
