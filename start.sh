@@ -66,7 +66,7 @@ if [ ! -f "$VENV_PYTHON" ]; then
 fi
 
 # Check if requirements installed
-if ! "$VENV_PYTHON" -c "import fastapi, onnxruntime, sentence_transformers" &> /dev/null; then
+if ! "$VENV_PYTHON" -c "import fastapi, onnxruntime, sklearn" &> /dev/null; then
     echo -e "${YELLOW}Installing backend dependencies from requirements.txt...${NC}"
     "$VENV_PYTHON" -m pip install --upgrade pip
     "$VENV_PYTHON" -m pip install -r "$BACKEND_DIR/requirements.txt"

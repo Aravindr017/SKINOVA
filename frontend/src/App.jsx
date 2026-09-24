@@ -593,13 +593,19 @@ export function App() {
           </div>
         </main>
 
-        {/* Mobile Bottom Nav (5 Adaptive Tabs) */}
-        <nav className="mobile-nav fixed bottom-0 left-0 right-0 z-30 border-t"
-             style={{background:'#fff', borderColor:'#E2E8F0', paddingBottom: 'env(safe-area-inset-bottom, 6px)'}}>
-          <div className="flex items-center">
+        {/* Mobile Bottom Nav (5 Adaptive Tabs - Full Width Distributed) */}
+        <nav
+          className="mobile-nav fixed bottom-0 left-0 right-0 w-full z-30 border-t"
+          style={{
+            background: '#FFFFFF',
+            borderColor: '#E2E8F0',
+            paddingBottom: 'env(safe-area-inset-bottom, 6px)',
+          }}
+        >
+          <div className="w-full grid grid-cols-5 items-stretch">
             {/* 1. Dashboard */}
             <button
-              className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 px-1 transition-colors min-h-[48px]"
+              className="flex flex-col items-center justify-center gap-0.5 py-2 px-1 transition-colors min-h-[48px] w-full"
               style={{color: activeTab === 'dashboard' ? '#0D9488' : '#94A3B8'}}
               onClick={() => setActiveTab('dashboard')}
             >
@@ -609,7 +615,7 @@ export function App() {
 
             {/* 2. Scan */}
             <button
-              className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 px-1 transition-colors min-h-[48px]"
+              className="flex flex-col items-center justify-center gap-0.5 py-2 px-1 transition-colors min-h-[48px] w-full"
               style={{color: activeTab === 'scan' ? '#0D9488' : '#94A3B8'}}
               onClick={() => setActiveTab('scan')}
             >
@@ -619,7 +625,7 @@ export function App() {
 
             {/* 3. Chat */}
             <button
-              className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 px-1 transition-colors min-h-[48px]"
+              className="flex flex-col items-center justify-center gap-0.5 py-2 px-1 transition-colors min-h-[48px] w-full"
               style={{color: activeTab === 'chat' ? '#0D9488' : '#94A3B8'}}
               onClick={() => setActiveTab('chat')}
             >
@@ -629,7 +635,7 @@ export function App() {
 
             {/* 4. Doctors */}
             <button
-              className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 px-1 transition-colors min-h-[48px]"
+              className="flex flex-col items-center justify-center gap-0.5 py-2 px-1 transition-colors min-h-[48px] w-full"
               style={{color: activeTab === 'hospitals' ? '#0D9488' : '#94A3B8'}}
               onClick={() => setActiveTab('hospitals')}
             >
@@ -639,7 +645,7 @@ export function App() {
 
             {/* 5. More / Menu (Direct drawer trigger or active extended tab indicator) */}
             <button
-              className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 px-1 transition-colors relative min-h-[48px]"
+              className="flex flex-col items-center justify-center gap-0.5 py-2 px-1 transition-colors relative min-h-[48px] w-full"
               style={{color: ['health', 'history', 'profile'].includes(activeTab) ? '#0D9488' : '#94A3B8'}}
               onClick={() => setSidebarOpen(true)}
             >
