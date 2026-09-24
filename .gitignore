@@ -54,6 +54,8 @@ venv.bak/
 # --- User Uploads & Runtime Artifacts ---
 backend/uploads/*
 !backend/uploads/.gitkeep
+backend/app/data/*.json
+!backend/app/data/.gitkeep
 *.log
 *.tmp
 *.temp

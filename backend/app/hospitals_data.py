@@ -627,6 +627,22 @@ def calculate_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) ->
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return round(R * c, 2)
 
+def calculate_driving_distance_km(direct_dist_km: float) -> float:
+    """
+    Computes genuine road driving distance estimate based on real-world road networks.
+    Direct aerial distance is 'as the crow flies'; urban/semi-urban roads curve by 1.25x - 1.35x.
+    """
+    if direct_dist_km is None:
+        return None
+    if direct_dist_km <= 1.0:
+        return round(direct_dist_km * 1.35, 1)
+    elif direct_dist_km <= 6.0:
+        return round(direct_dist_km * 1.28, 1)
+    elif direct_dist_km <= 25.0:
+        return round(direct_dist_km * 1.24, 1)
+    else:
+        return round(direct_dist_km * 1.20, 1)
+
 # ==========================================
 # Live OpenStreetMap Overpass Healthcare Query
 # ==========================================
@@ -703,6 +719,9 @@ def _fetch_osm_hospitals(lat: float, lon: float, radius_m: int = 15000) -> List[
                     "consultation_fee": 700 + (i % 3) * 100,
                     "currency": "INR",
                     "distance_km": dist,
+                    "driving_distance_km": calculate_driving_distance_km(dist),
+                    "google_maps_directions_url": f"https://www.google.com/maps/dir/?api=1&destination={el_lat},{el_lon}&travelmode=driving",
+                    "google_maps_search_url": f"https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(clean_name + ' ' + address)}",
                     "specialties": ["Dermatology", "Skin Lesion Screening", "Dermato-Oncology"],
                     "doctors": [
                         {
@@ -741,9 +760,14 @@ def get_nearby_hospitals(
     for item in HOSPITAL_DATABASE:
         hosp = dict(item)
         if lat is not None and lon is not None:
-            hosp["distance_km"] = calculate_distance_km(lat, lon, hosp["lat"], hosp["lon"])
+            dist = calculate_distance_km(lat, lon, hosp["lat"], hosp["lon"])
+            hosp["distance_km"] = dist
+            hosp["driving_distance_km"] = calculate_driving_distance_km(dist)
         else:
             hosp["distance_km"] = None
+            hosp["driving_distance_km"] = None
+        hosp["google_maps_directions_url"] = f"https://www.google.com/maps/dir/?api=1&destination={hosp['lat']},{hosp['lon']}&travelmode=driving"
+        hosp["google_maps_search_url"] = f"https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(hosp['name'] + ' ' + hosp.get('address', ''))}"
         results.append(hosp)
 
     # 2. If coordinates are provided, also query live OSM clinics

@@ -38,6 +38,7 @@ from app.predictor import predict_image
 from app.rag import search_knowledge_base
 from app.llm import generate_response, synthesize_rag_response
 from app.hospitals_data import get_nearby_hospitals, book_consultation, get_user_appointments
+import app.storage as storage
 
 # Google OAuth Client ID for server-side token verification
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
@@ -590,6 +591,9 @@ def email_login(payload: EmailLoginPayload):
         }
         REGISTERED_USERS[email_clean] = user_record
 
+    storage.save_user_record(email_clean, user_record)
+    user_activity = storage.get_user_activity(user_record["id"], email_clean)
+
     return {
         "success": True,
         "user": {
@@ -600,6 +604,7 @@ def email_login(payload: EmailLoginPayload):
             "provider": "email",
             "token": user_record["token"]
         },
+        "activity": user_activity,
         "message": "Signed in successfully."
     }
 
@@ -623,7 +628,7 @@ def google_signin(payload: GoogleAuthPayload):
     name_clean = name or email_clean.split("@")[0].capitalize()
     picture_clean = picture or f"https://api.dicebear.com/7.x/avataaars/svg?seed={email_clean}"
 
-    user_record = REGISTERED_USERS.get(email_clean)
+    user_record = REGISTERED_USERS.get(email_clean) or storage.find_user_by_email(email_clean)
     if user_record:
         user_record["name"] = name_clean
         if picture:
@@ -643,6 +648,9 @@ def google_signin(payload: GoogleAuthPayload):
         }
         REGISTERED_USERS[email_clean] = user_record
 
+    storage.save_user_record(email_clean, user_record)
+    user_activity = storage.get_user_activity(user_record["id"], email_clean)
+
     return {
         "success": True,
         "user": {
@@ -653,7 +661,46 @@ def google_signin(payload: GoogleAuthPayload):
             "provider": "google",
             "token": user_record["token"]
         },
+        "activity": user_activity,
         "message": "Signed in successfully with Google."
+    }
+
+class UserSyncPayload(BaseModel):
+    user_id: str
+    email: Optional[str] = None
+    scans: Optional[list] = []
+    searches: Optional[list] = []
+    appointments: Optional[list] = []
+    health_logs: Optional[list] = []
+
+@app.post("/api/user/sync")
+def sync_user_activity_endpoint(payload: UserSyncPayload):
+    """
+    Synchronizes user scans, chat queries, and appointments across all devices
+    when signed in with the same Google or registered account.
+    """
+    merged = storage.sync_user_activity(
+        user_id=payload.user_id,
+        email=payload.email,
+        scans=payload.scans or [],
+        searches=payload.searches or [],
+        appointments=payload.appointments or [],
+        health_logs=payload.health_logs or []
+    )
+    return {
+        "success": True,
+        "activity": merged,
+        "message": "User activity synchronized across all devices successfully."
+    }
+
+@app.get("/api/user/activity")
+def get_user_activity_endpoint(user_id: Optional[str] = Query(None), email: Optional[str] = Query(None)):
+    if not user_id and not email:
+        raise HTTPException(status_code=400, detail="Please provide user_id or email.")
+    activity = storage.get_user_activity(user_id=user_id or "", email=email)
+    return {
+        "success": True,
+        "activity": activity
     }
 
 class ClearScansPayload(BaseModel):
@@ -661,6 +708,12 @@ class ClearScansPayload(BaseModel):
 
 @app.post("/api/scans/clear")
 def clear_user_scans(payload: ClearScansPayload):
+    if payload.user_id:
+        store = storage.load_store()
+        acts = store.setdefault("activities", {})
+        if payload.user_id in acts:
+            acts[payload.user_id]["scans"] = []
+            storage.save_store(store)
     return {
         "success": True,
         "message": "Scan history cleared successfully."

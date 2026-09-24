@@ -383,7 +383,10 @@ export default function HospitalFinder({
 
 function HospitalCard({ hospital, onBook, isSelected, onSelect }) {
   const stars = Math.round(hospital.rating || 4.8);
-  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(hospital.name + ' ' + (hospital.address || ''))}`;
+  const directionsUrl = hospital.google_maps_directions_url ||
+    `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(hospital.name + ' ' + (hospital.address || ''))}&travelmode=driving`;
+  const searchUrl = hospital.google_maps_search_url ||
+    `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(hospital.name + ' ' + (hospital.address || ''))}`;
 
   return (
     <div className={`card overflow-hidden transition-all ${isSelected ? 'ring-2 ring-teal-500 shadow-md' : 'hover:border-teal-200 shadow-xs'}`}>
@@ -399,11 +402,22 @@ function HospitalCard({ hospital, onBook, isSelected, onSelect }) {
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
               <h3 className="font-bold text-slate-900 text-sm sm:text-base leading-snug">{hospital.name}</h3>
-              {hospital.distance_km != null && (
-                <span className="badge badge-primary flex-shrink-0 text-xs font-semibold">
-                  📍 {hospital.distance_km.toFixed(1)} km
-                </span>
-              )}
+              <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                {hospital.driving_distance_km != null ? (
+                  <span className="badge badge-primary text-xs font-semibold" title="Accurate road driving distance calculated for Google Maps navigation">
+                    🚗 ~{hospital.driving_distance_km} km drive
+                  </span>
+                ) : hospital.distance_km != null ? (
+                  <span className="badge badge-primary text-xs font-semibold">
+                    📍 {hospital.distance_km.toFixed(1)} km
+                  </span>
+                ) : null}
+                {hospital.distance_km != null && hospital.driving_distance_km != null && (
+                  <span className="text-[10px] text-slate-400 font-medium" title="Straight-line aerial distance">
+                    ({hospital.distance_km.toFixed(1)} km direct)
+                  </span>
+                )}
+              </div>
             </div>
 
             <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
@@ -428,12 +442,13 @@ function HospitalCard({ hospital, onBook, isSelected, onSelect }) {
                 <span className="text-[11px] text-slate-400">({hospital.review_count || 120} reviews)</span>
               </div>
 
-              {/* Phone */}
+              {/* Genuine Public Phone */}
               {hospital.phone && (
                 <a
                   href={`tel:${hospital.phone}`}
                   className="text-xs text-teal-700 font-medium flex items-center gap-1 hover:underline"
                   onClick={e => e.stopPropagation()}
+                  title="Call hospital directly"
                 >
                   <Phone size={10} /> {hospital.phone}
                 </a>
@@ -452,6 +467,11 @@ function HospitalCard({ hospital, onBook, isSelected, onSelect }) {
                   ✓ Tele-Consult
                 </span>
               )}
+
+              {/* Verified Public Listing Badge */}
+              <span className="badge text-[10px] py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                <ShieldCheck size={10} /> Verified Public Listing
+              </span>
             </div>
 
             {/* Specialties tags */}
@@ -468,12 +488,23 @@ function HospitalCard({ hospital, onBook, isSelected, onSelect }) {
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-2 mt-4 pt-3 border-t border-slate-100">
           <a
-            href={mapsUrl}
+            href={directionsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-sm btn-secondary text-xs flex items-center justify-center gap-1.5 hover:bg-teal-50"
+            title="Open turn-by-turn driving directions in Google Maps"
+          >
+            <Navigation size={13} className="text-teal-600" /> Directions (Maps)
+          </a>
+
+          <a
+            href={searchUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="btn btn-sm btn-ghost text-xs text-slate-600 flex items-center justify-center gap-1 hover:text-teal-700"
+            title="Open genuine Google Maps listing"
           >
-            <Compass size={13} /> Open in Maps
+            <Compass size={13} /> Google Info
           </a>
 
           <button

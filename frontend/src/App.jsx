@@ -18,6 +18,7 @@ import UserHistory from './components/UserHistory';
 import ReportModal from './components/ReportModal';
 import UserProfile from './components/UserProfile';
 import HealthDashboard from './components/HealthDashboard';
+import InteractiveBackground from './components/InteractiveBackground';
 
 import api from './services/api';
 import { getUserCoordinates, getCityFromCoordinates } from './utils/location';
@@ -122,59 +123,84 @@ export function App() {
     };
   }, []);
 
-  // ── User Data Isolation Effect (Sync on Login / Logout) ───────
+  // ── User Data Isolation & Cross-Device Cloud Sync Effect ───────
   useEffect(() => {
     if (currentUser?.id) {
-      // 1. Load User Scans
+      // 1. Load User Scans from localStorage
+      let localScans = [];
       const userScans = localStorage.getItem(`skinova_scans_${currentUser.id}`);
       if (userScans) {
-        try { setScanHistory(JSON.parse(userScans)); } catch { setScanHistory([]); }
+        try { localScans = JSON.parse(userScans); } catch { localScans = []; }
       } else {
         const legacy = localStorage.getItem('skinova_scans');
         if (legacy) {
           try {
             const parsed = JSON.parse(legacy);
-            const userOnly = parsed.filter(s => !s.userId || s.userId === currentUser.id);
-            setScanHistory(userOnly);
-            localStorage.setItem(`skinova_scans_${currentUser.id}`, JSON.stringify(userOnly));
-          } catch { setScanHistory([]); }
-        } else {
-          setScanHistory([]);
+            localScans = parsed.filter(s => !s.userId || s.userId === currentUser.id);
+            localStorage.setItem(`skinova_scans_${currentUser.id}`, JSON.stringify(localScans));
+          } catch { localScans = []; }
         }
       }
+      setScanHistory(localScans);
 
-      // 2. Load User Searches
+      // 2. Load User Searches from localStorage
+      let localSearches = [];
       const userSearches = localStorage.getItem(`skinova_searches_${currentUser.id}`);
       if (userSearches) {
-        try { setSearchHistory(JSON.parse(userSearches)); } catch { setSearchHistory([]); }
-      } else {
-        setSearchHistory([]);
+        try { localSearches = JSON.parse(userSearches); } catch { localSearches = []; }
       }
+      setSearchHistory(localSearches);
 
-      // 3. Load User Appointments
+      // 3. Load User Appointments from localStorage
+      let localAppts = [];
       const userAppts = localStorage.getItem(`skinova_appointments_${currentUser.id}`);
       if (userAppts) {
-        try { setBookedAppointments(JSON.parse(userAppts)); } catch { setBookedAppointments([]); }
+        try { localAppts = JSON.parse(userAppts); } catch { localAppts = []; }
       } else {
         const legacyAppts = localStorage.getItem('skinova_appointments');
         if (legacyAppts) {
           try {
             const parsed = JSON.parse(legacyAppts);
-            const userOnly = parsed.filter(a => !a.userId || a.userId === currentUser.id);
-            setBookedAppointments(userOnly);
-            localStorage.setItem(`skinova_appointments_${currentUser.id}`, JSON.stringify(userOnly));
-          } catch { setBookedAppointments([]); }
-        } else {
-          setBookedAppointments([]);
+            localAppts = parsed.filter(a => !a.userId || a.userId === currentUser.id);
+            localStorage.setItem(`skinova_appointments_${currentUser.id}`, JSON.stringify(localAppts));
+          } catch { localAppts = []; }
         }
       }
+      setBookedAppointments(localAppts);
+
+      // 4. Bi-Directional Cloud Sync (Sync across all devices with same Google Account)
+      api.syncUserActivity?.({
+        userId: currentUser.id,
+        email: currentUser.email,
+        scans: localScans,
+        searches: localSearches,
+        appointments: localAppts,
+      }).then(res => {
+        if (res?.activity) {
+          const act = res.activity;
+          if (Array.isArray(act.scans)) {
+            setScanHistory(act.scans);
+            localStorage.setItem(`skinova_scans_${currentUser.id}`, JSON.stringify(act.scans));
+          }
+          if (Array.isArray(act.searches)) {
+            setSearchHistory(act.searches);
+            localStorage.setItem(`skinova_searches_${currentUser.id}`, JSON.stringify(act.searches));
+          }
+          if (Array.isArray(act.appointments)) {
+            setBookedAppointments(act.appointments);
+            localStorage.setItem(`skinova_appointments_${currentUser.id}`, JSON.stringify(act.appointments));
+          }
+        }
+      }).catch(err => {
+        console.warn('Cross-device cloud sync background warning:', err?.message || err);
+      });
     } else {
       // Clean slate when signed out for security and privacy
       setScanHistory([]);
       setSearchHistory([]);
       setBookedAppointments([]);
     }
-  }, [currentUser?.id]);
+  }, [currentUser?.id, currentUser?.email]);
 
   // ── Effects ──────────────────────────────────────────────
   useEffect(() => {
@@ -192,7 +218,7 @@ export function App() {
     }).catch(() => setLocationName('Your location'));
   }, []);
 
-  // ── Search & Consultation History Tracking ────────────────
+  // ── Search & Consultation History Tracking (with Cloud Sync) ─
   const handleRecordSearch = useCallback((query, type = 'ai_consultation', metadata = {}) => {
     if (!query || !query.trim()) return;
     const searchEntry = {
@@ -209,6 +235,12 @@ export function App() {
       const updated = [searchEntry, ...filtered].slice(0, 50);
       if (currentUser?.id) {
         localStorage.setItem(`skinova_searches_${currentUser.id}`, JSON.stringify(updated));
+        // Cross-device cloud sync
+        api.syncUserActivity?.({
+          userId: currentUser.id,
+          email: currentUser.email,
+          searches: updated,
+        }).catch(() => {});
       } else {
         localStorage.setItem('skinova_searches_guest', JSON.stringify(updated));
       }
@@ -220,6 +252,11 @@ export function App() {
     setSearchHistory([]);
     if (currentUser?.id) {
       localStorage.removeItem(`skinova_searches_${currentUser.id}`);
+      api.syncUserActivity?.({
+        userId: currentUser.id,
+        email: currentUser.email,
+        searches: [],
+      }).catch(() => {});
     } else {
       localStorage.removeItem('skinova_searches_guest');
     }
@@ -230,6 +267,11 @@ export function App() {
       const updated = prev.filter(s => s.id !== searchId);
       if (currentUser?.id) {
         localStorage.setItem(`skinova_searches_${currentUser.id}`, JSON.stringify(updated));
+        api.syncUserActivity?.({
+          userId: currentUser.id,
+          email: currentUser.email,
+          searches: updated,
+        }).catch(() => {});
       } else {
         localStorage.setItem('skinova_searches_guest', JSON.stringify(updated));
       }
@@ -256,13 +298,18 @@ export function App() {
     }
   }, []);
 
-  // ── Scans Handlers ────────────────────────────────────────
+  // ── Scans Handlers (with Cloud Sync) ─────────────────────
   const handleClearScans = useCallback(async () => {
     setScanHistory([]);
     if (currentUser?.id) {
       localStorage.removeItem(`skinova_scans_${currentUser.id}`);
       try {
         await api.post('/api/scans/clear', { user_id: currentUser.id });
+        api.syncUserActivity?.({
+          userId: currentUser.id,
+          email: currentUser.email,
+          scans: [],
+        }).catch(() => {});
       } catch (err) {
         console.warn('Scans clear API error:', err);
       }
@@ -276,6 +323,11 @@ export function App() {
       const updated = prev.filter(s => s.id !== scanId);
       if (currentUser?.id) {
         localStorage.setItem(`skinova_scans_${currentUser.id}`, JSON.stringify(updated));
+        api.syncUserActivity?.({
+          userId: currentUser.id,
+          email: currentUser.email,
+          scans: updated,
+        }).catch(() => {});
       } else {
         localStorage.setItem('skinova_scans_guest', JSON.stringify(updated));
       }
@@ -342,6 +394,12 @@ export function App() {
         const updated = [entry, ...h.filter(s => s.id !== entry.id)].slice(0, 50);
         if (currentUser?.id) {
           localStorage.setItem(`skinova_scans_${currentUser.id}`, JSON.stringify(updated));
+          // Cross-device cloud sync
+          api.syncUserActivity?.({
+            userId: currentUser.id,
+            email: currentUser.email,
+            scans: updated,
+          }).catch(() => {});
         } else {
           localStorage.setItem('skinova_scans_guest', JSON.stringify(updated));
         }
@@ -362,8 +420,26 @@ export function App() {
   }, [currentUser]);
 
   const handleConfirmBooking = useCallback(booking => {
-    const newBooking = { ...booking, id: Date.now(), userId: currentUser?.id };
-    setBookedAppointments(prev => [newBooking, ...prev]);
+    const newBooking = {
+      ...booking,
+      id: Date.now(),
+      userId: currentUser?.id,
+      userEmail: currentUser?.email,
+      status: 'confirmed'
+    };
+    setBookedAppointments(prev => {
+      const updated = [newBooking, ...prev];
+      if (currentUser?.id) {
+        localStorage.setItem(`skinova_appointments_${currentUser.id}`, JSON.stringify(updated));
+        // Cross-device cloud sync
+        api.syncUserActivity?.({
+          userId: currentUser.id,
+          email: currentUser.email,
+          appointments: updated,
+        }).catch(() => {});
+      }
+      return updated;
+    });
     setBookingModalOpen(false);
   }, [currentUser]);
 
@@ -553,7 +629,8 @@ export function App() {
   );
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: '#F8FAFC' }}>
+    <InteractiveBackground>
+      <div className="flex h-screen overflow-hidden bg-transparent">
       {/* ── Desktop Sidebar ─────────────────────────── */}
       <aside className="sidebar-desktop w-64 h-full flex-shrink-0 border-r flex flex-col"
         style={{ background: '#fff', borderColor: '#E2E8F0' }}>
@@ -772,7 +849,7 @@ export function App() {
         </header>
 
         {/* Scrollable Content */}
-        <main className="flex-1 overflow-y-auto main-content">
+        <main className="flex-1 overflow-y-auto main-content bg-transparent">
           <div className="max-w-4xl mx-auto p-3.5 sm:p-6">
             {activeTab === 'dashboard' && <DashboardView />}
             {activeTab === 'scan' && <ScanView />}
@@ -910,7 +987,8 @@ export function App() {
           onClose={() => setReportModalOpen(false)}
         />
       )}
-    </div>
+      </div>
+    </InteractiveBackground>
   );
 }
 

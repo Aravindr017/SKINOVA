@@ -55,9 +55,23 @@ apiClient.chat = ({ query, predictedClass, confidence, topK, top_k = 4 }) => {
   return apiClient.post('/api/chat', {
     query: sanitizeText(query, 500),
     predicted_class: predictedClass || null,
-    confidence: confidence || null,
     top_k: topK || top_k || 4,
   }).then(r => r.data);
+};
+
+apiClient.syncUserActivity = ({ userId, email, scans, searches, appointments, healthLogs }) => {
+  return apiClient.post('/api/user/sync', {
+    user_id: userId,
+    email: email,
+    scans: scans || [],
+    searches: searches || [],
+    appointments: appointments || [],
+    health_logs: healthLogs || []
+  }).then(r => r.data);
+};
+
+apiClient.getUserActivity = (userId, email) => {
+  return apiClient.get('/api/user/activity', { params: { user_id: userId, email } }).then(r => r.data);
 };
 
 export default apiClient;
@@ -89,5 +103,18 @@ export const api = {
       confidence: confidence || null,
       top_k: topK || top_k || 4,
     }).then(r => r.data);
+  },
+  syncUserActivity: ({ userId, email, scans, searches, appointments, healthLogs }) => {
+    return apiClient.post('/api/user/sync', {
+      user_id: userId,
+      email: email,
+      scans: scans || [],
+      searches: searches || [],
+      appointments: appointments || [],
+      health_logs: healthLogs || []
+    }).then(r => r.data);
+  },
+  getUserActivity: (userId, email) => {
+    return apiClient.get('/api/user/activity', { params: { user_id: userId, email } }).then(r => r.data);
   },
 };
