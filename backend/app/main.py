@@ -872,3 +872,70 @@ def get_health_summary(user_id: str):
 def get_health_summary_query(user_id: str = Query(...)):
     """Query parameter alias for /api/health/summary/{user_id}."""
     return get_health_summary(user_id=user_id)
+
+# ==========================================
+# Validic Health Cloud Integration Endpoints
+# ==========================================
+import app.validic as validic_service
+
+@app.get("/api/health/validic/connect/{user_id}")
+async def get_validic_connect(user_id: str):
+    """Retrieves or provisions a Validic user and returns the Marketplace sync URL."""
+    try:
+        user_info = await validic_service.get_or_create_validic_user(user_id)
+        return {
+            "success": True,
+            "org_id": validic_service.VALIDIC_ORG_ID,
+            "validic_user": user_info,
+            "marketplace_url": user_info.get("marketplace_url")
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Validic connection failed: {str(e)}")
+
+@app.post("/api/health/validic/sync/{user_id}")
+async def sync_validic_user_data(user_id: str):
+    """Fetches real device summaries, sleep, and measurements from Validic Inform API."""
+    try:
+        user_info = await validic_service.get_or_create_validic_user(user_id)
+        validic_id = user_info.get("validic_user_id")
+        today_str = datetime.utcnow().strftime("%Y-%m-%d")
+        health_data = await validic_service.fetch_validic_health_data(validic_id, target_date=today_str)
+
+        if health_data.get("synced") and (health_data.get("steps", 0) > 0 or health_data.get("calories_burned", 0) > 0):
+            if user_id not in HEALTH_LOGS:
+                HEALTH_LOGS[user_id] = []
+            HEALTH_LOGS[user_id] = [l for l in HEALTH_LOGS[user_id] if l.get("date") != today_str]
+            entry = {
+                "user_id": user_id,
+                "date": today_str,
+                "steps": health_data["steps"],
+                "calories_burned": health_data["calories_burned"],
+                "water_ml": health_data.get("water_ml", 0),
+                "heart_rate_bpm": health_data.get("heart_rate_bpm"),
+                "sleep_hours": health_data.get("sleep_hours"),
+                "workout_type": "Validic Cloud Sync",
+                "workout_minutes": health_data.get("workout_minutes", 0),
+                "mood": "😊 Active",
+                "notes": f"Genuine sync from Validic Health Cloud ({health_data['source']}).",
+                "source": health_data["source"],
+                "logged_at": datetime.utcnow().isoformat()
+            }
+            HEALTH_LOGS[user_id].append(entry)
+            return {
+                "success": True,
+                "synced": True,
+                "entry": entry,
+                "health_data": health_data,
+                "marketplace_url": user_info.get("marketplace_url"),
+                "message": f"Successfully synced {health_data['steps']} steps from Validic!"
+            }
+        else:
+            return {
+                "success": True,
+                "synced": False,
+                "health_data": health_data,
+                "marketplace_url": user_info.get("marketplace_url"),
+                "message": "Validic connected. Complete your device pairing in the sync portal to stream data."
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Validic sync failed: {str(e)}")

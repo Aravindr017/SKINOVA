@@ -120,4 +120,10 @@ export const api = {
   getUserActivity: (userId, email) => {
     return apiClient.get('/api/user/activity', { params: { user_id: userId, email } }).then(r => r.data);
   },
+  getValidicConnect: (userId) => apiClient.get(`/api/health/validic/connect/${userId}`).then(r => r.data),
+  syncValidic: (userId) => apiClient.post(`/api/health/validic/sync/${userId}`).then(r => r.data),
 };
+
+apiClient.getValidicConnect = (userId) => apiClient.get(`/api/health/validic/connect/${userId}`).then(r => r.data);
+apiClient.syncValidic = (userId) => apiClient.post(`/api/health/validic/sync/${userId}`).then(r => r.data);
+

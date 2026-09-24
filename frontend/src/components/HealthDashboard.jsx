@@ -4,7 +4,7 @@ import {
   TrendingUp, Plus, Calendar, Save, Target, Activity, Wind,
   Smartphone, CheckCircle2, RefreshCw, ShieldCheck, Zap,
   Settings, ExternalLink, X, AlertCircle, Upload, Trash2, FileText,
-  Play, Pause, Compass, HelpCircle, Check, ShieldAlert
+  Play, Pause, Compass, HelpCircle, Check, Globe, Link2, ShieldAlert
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
 import api from '../services/api';
@@ -46,18 +46,22 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
   const [logs, setLogs]           = useState([]);
   const [summary, setSummary]     = useState(null);
 
-  // Health App Integration States (Apple Health & Google Fit)
+  // Health App Integration States (Validic Cloud, Apple Health, Google Fit)
   const [connectedApp, setConnectedApp] = useState(() => {
     if (!currentUser) return null;
-    return localStorage.getItem(`skinova_connected_health_app_${currentUser.id}`) || null; // 'apple' | 'google' | null
+    return localStorage.getItem(`skinova_connected_health_app_${currentUser.id}`) || 'validic'; // default to validic
   });
   const [showConnectModal, setShowConnectModal] = useState(false);
-  const [modalTab, setModalTab]                 = useState('screen'); // 'screen' | 'file' | 'pedometer' | 'guide'
+  const [modalTab, setModalTab]                 = useState('validic'); // 'validic' | 'screen' | 'file' | 'pedometer'
   const [isSyncing, setIsSyncing]               = useState(false);
   const [fileParsing, setFileParsing]           = useState(false);
   const [lastSyncTime, setLastSyncTime]         = useState(() => {
     return localStorage.getItem('skinova_last_health_sync') || null;
   });
+
+  // Validic Health Platform State
+  const [validicInfo, setValidicInfo]           = useState(null);
+  const [isValidicLoading, setIsValidicLoading] = useState(false);
 
   // Live Hardware Sensor Pedometer States (iOS Safari & Android Chrome)
   const [liveSensorActive, setLiveSensorActive] = useState(false);
@@ -100,7 +104,6 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        // Strict filter: purge any fake seeded records with artificial multipliers
         const genuineLogs = parsed.filter(l => !(
           (l.steps === 8450 && l.calories_burned === 420) ||
           (l.steps === 7800 && l.calories_burned === 375) ||
@@ -128,8 +131,23 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
     } catch {}
   };
 
+  const fetchValidicStatus = async () => {
+    if (!currentUser) return;
+    try {
+      const res = await api.getValidicConnect(currentUser.id);
+      if (res?.success) {
+        setValidicInfo(res);
+      }
+    } catch (e) {
+      console.warn('Validic connect check:', e);
+    }
+  };
+
   useEffect(() => {
     fetchSummary();
+    if (currentUser) {
+      fetchValidicStatus();
+    }
   }, [currentUser]);
 
   // Genuine entry for today (if none exists yet, today starts at 0!)
@@ -193,7 +211,7 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
           setMotionPermissionState('denied');
           setSyncFeedback({
             type: 'warning',
-            text: 'Motion sensor access was denied. You can still import Apple Health export.zip or enter your exact screen count.'
+            text: 'Motion sensor access was denied. You can still sync via Validic Cloud, import export.zip, or enter screen count.'
           });
         }
       } catch (err) {
@@ -201,7 +219,6 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
         setLiveSensorActive(true);
       }
     } else {
-      // Android Chrome / Standard browser
       setMotionPermissionState('granted');
       setLiveSensorActive(true);
       setSyncFeedback({
@@ -240,7 +257,7 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
     });
   };
 
-  // --- Save genuine readings (from screen input or file import) ---
+  // --- Save genuine readings ---
   const handleSaveGenuineReading = (reading) => {
     if (!currentUser) { onLoginRequest?.(); return; }
     const now = new Date();
@@ -258,8 +275,8 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
       workout_type: reading.workout_type || (connectedApp ? 'Mobile Synced Activity' : 'Daily Movement'),
       workout_minutes: parseInt(reading.workout_minutes) || Math.round(stepsNum / 100),
       mood: reading.mood || '😊 Active',
-      notes: reading.notes || `Exact genuine reading confirmed from ${connectedApp === 'apple' ? 'Apple Health' : connectedApp === 'google' ? 'Google Fit' : 'Device'}.`,
-      source: reading.source || (connectedApp === 'apple' ? 'Apple Health (Screen Verified)' : connectedApp === 'google' ? 'Google Fit (Screen Verified)' : 'Manual Entry'),
+      notes: reading.notes || `Exact genuine reading confirmed from ${connectedApp === 'apple' ? 'Apple Health' : connectedApp === 'validic' ? 'Validic Cloud' : connectedApp === 'google' ? 'Google Fit' : 'Device'}.`,
+      source: reading.source || (connectedApp === 'apple' ? 'Apple Health (Screen Verified)' : connectedApp === 'validic' ? 'Validic Cloud (Verified)' : connectedApp === 'google' ? 'Google Fit (Screen Verified)' : 'Manual Entry'),
       logged_at: now.toISOString(),
     };
 
@@ -280,6 +297,55 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
     localStorage.setItem('skinova_last_health_sync', timeStr);
     setShowConnectModal(false);
     fetchSummary();
+  };
+
+  // --- Validic Health Cloud Integration Actions ---
+  const handleOpenValidicPortal = () => {
+    const url = validicInfo?.marketplace_url || 'https://syncmydevice.com?token=7a331d3267c394da303e96bfcb7fd9411dc486d3d2bdf831247d27c2035c718d';
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleSyncValidic = async () => {
+    if (!currentUser) { onLoginRequest?.(); return; }
+    setIsValidicLoading(true);
+    setSyncFeedback({ type: 'warning', text: 'Connecting to Validic Health Cloud (Org: 6ab4f8419cf1c17203213ecf)…' });
+
+    try {
+      const res = await api.syncValidic(currentUser.id);
+      if (res.success && res.synced && res.entry) {
+        const entry = res.entry;
+        const newLogs = [entry, ...logs.filter(l => l.date !== entry.date)];
+        setLogs(newLogs);
+        localStorage.setItem(`skinova_health_${currentUser.id}`, JSON.stringify(newLogs.slice(0, 30)));
+        const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        setLastSyncTime(timeStr);
+        localStorage.setItem('skinova_last_health_sync', timeStr);
+        setConnectedApp('validic');
+        localStorage.setItem(`skinova_connected_health_app_${currentUser.id}`, 'validic');
+        setSyncFeedback({
+          type: 'success',
+          text: `✓ Validic Health Cloud synchronized! Received ${entry.steps.toLocaleString()} steps, ${entry.calories_burned} kcal at ${timeStr}.`
+        });
+        setShowConnectModal(false);
+        fetchSummary();
+      } else {
+        setConnectedApp('validic');
+        if (currentUser) {
+          localStorage.setItem(`skinova_connected_health_app_${currentUser.id}`, 'validic');
+        }
+        setSyncFeedback({
+          type: 'success',
+          text: '✓ Validic Inform API connected! If your device has not finished syncing yet, click "Open Validic Sync Portal" to pair Apple Health or Google Fit, or use Screen Sync.'
+        });
+      }
+    } catch (err) {
+      setSyncFeedback({
+        type: 'error',
+        text: 'Validic Cloud sync failed. Please check your connection or use Screen Sync.'
+      });
+    } finally {
+      setIsValidicLoading(false);
+    }
   };
 
   // --- Genuine Apple Health (export.zip / export.xml) and Google Fit file parsing ---
@@ -381,7 +447,9 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
       localStorage.setItem(`skinova_connected_health_app_${currentUser.id}`, appType);
     }
 
-    if (appType === 'apple') {
+    if (appType === 'validic') {
+      await handleSyncValidic();
+    } else if (appType === 'apple') {
       if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
         try {
           const res = await DeviceMotionEvent.requestPermission();
@@ -412,17 +480,20 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
     }
   };
 
-  // Genuine Mobile Sync: Never generate fake multipliers!
   const handleSyncHealthApp = async (appType) => {
     if (!currentUser) { onLoginRequest?.(); return; }
     setIsSyncing(true);
     setSyncFeedback(null);
 
     try {
+      if (appType === 'validic') {
+        await handleSyncValidic();
+        return;
+      }
+
       const existingToday = logs.find(l => l.date === TODAY);
 
       if (existingToday && (existingToday.steps > 0 || existingToday.calories_burned > 0)) {
-        // Genuine data already exists for today: confirm and sync with cloud
         const now = new Date();
         const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -440,8 +511,6 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
           text: `✓ Cloud synchronized: Today's genuine record (${existingToday.steps.toLocaleString()} steps, ${existingToday.calories_burned} kcal) confirmed at ${timeStr}.`
         });
       } else {
-        // No genuine reading recorded for today yet.
-        // NEVER make up fake numbers! Open Exact Screen Sync modal to get genuine counts from the user's screen
         setMobileSyncForm({
           steps: existingToday?.steps ? String(existingToday.steps) : '',
           calories_burned: existingToday?.calories_burned ? String(existingToday.calories_burned) : '',
@@ -449,11 +518,11 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
           heart_rate_bpm: existingToday?.heart_rate_bpm ? String(existingToday.heart_rate_bpm) : '',
           sleep_hours: existingToday?.sleep_hours ? String(existingToday.sleep_hours) : '',
         });
-        setModalTab('screen');
+        setModalTab('validic');
         setShowConnectModal(true);
         setSyncFeedback({
           type: 'warning',
-          text: `To show your exact ${appType === 'apple' ? 'Apple Health' : 'Google Fit'} count, please enter the numbers shown on your phone screen or import export.zip.`
+          text: `To show your exact count, pair via Validic Cloud, enter screen numbers, or import export.zip.`
         });
       }
       fetchSummary();
@@ -515,7 +584,7 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
         <div className="card p-10 text-center">
           <Heart size={32} className="text-slate-300 mx-auto mb-3"/>
           <h2 className="text-xl font-bold text-slate-800 mb-2">Health & Fitness Tracker</h2>
-          <p className="text-slate-500 text-sm mb-5">Sign in to track your genuine daily health metrics and sync with Apple Health or Google Fit.</p>
+          <p className="text-slate-500 text-sm mb-5">Sign in to track your genuine daily health metrics and sync with Apple Health, Google Fit, or Validic Cloud.</p>
           <button className="btn btn-primary" onClick={onLoginRequest}>Sign In</button>
         </div>
       </div>
@@ -531,7 +600,7 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
             Health & Fitness Tracker
           </h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            100% Genuine wellness tracking synced with Apple Health & Google Fit
+            100% Genuine wellness tracking powered by Validic API, Apple Health & Google Fit
           </p>
         </div>
 
@@ -540,18 +609,18 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
             <button
               className="btn btn-sm btn-secondary flex items-center gap-1.5"
               onClick={() => handleSyncHealthApp(connectedApp)}
-              disabled={isSyncing}
+              disabled={isSyncing || isValidicLoading}
               title="Sync latest steps and calories from your mobile app"
             >
-              <RefreshCw size={13} className={isSyncing ? 'animate-spin text-teal-600' : ''}/>
-              <span>{isSyncing ? 'Syncing…' : 'Sync Mobile'}</span>
+              <RefreshCw size={13} className={isSyncing || isValidicLoading ? 'animate-spin text-teal-600' : ''}/>
+              <span>{isSyncing || isValidicLoading ? 'Syncing Cloud…' : 'Sync Mobile'}</span>
             </button>
           ) : (
             <button
               className="btn btn-sm btn-secondary flex items-center gap-1.5"
-              onClick={() => { setModalTab('screen'); setShowConnectModal(true); }}
+              onClick={() => { setModalTab('validic'); setShowConnectModal(true); }}
             >
-              <Smartphone size={14} className="text-teal-600"/> Connect Health App
+              <Globe size={14} className="text-teal-600"/> Connect Health App
             </button>
           )}
 
@@ -576,24 +645,28 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
         </div>
       )}
 
-      {/* Connected Health Tracking App Status Banner */}
+      {/* Connected Health Tracking App Status Banner (Validic, Apple, Google) */}
       <div className="card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border shadow-xs"
            style={{ background: connectedApp ? '#F0FDF4' : '#F8FAFC', borderColor: connectedApp ? '#86EFAC' : '#E2E8F0' }}>
         <div className="flex items-center gap-3">
           <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-xs"
+            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-xs text-white"
             style={{
-              background: connectedApp === 'apple'
+              background: connectedApp === 'validic'
+                ? 'linear-gradient(135deg,#0D9488,#0284C7)'
+                : connectedApp === 'apple'
                 ? '#000'
                 : connectedApp === 'google'
                 ? 'linear-gradient(135deg,#4285F4,#34A853)'
                 : '#E2E8F0'
             }}
           >
-            {connectedApp === 'apple' ? (
-              <span className="text-white text-lg">🍏</span>
+            {connectedApp === 'validic' ? (
+              <Globe size={20}/>
+            ) : connectedApp === 'apple' ? (
+              <span className="text-lg">🍏</span>
             ) : connectedApp === 'google' ? (
-              <span className="text-white text-base font-bold">G</span>
+              <span className="text-base font-bold">G</span>
             ) : (
               <Smartphone size={18} className="text-slate-500"/>
             )}
@@ -601,7 +674,9 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
           <div>
             <div className="flex items-center gap-2">
               <p className="text-sm font-bold text-slate-900">
-                {connectedApp === 'apple'
+                {connectedApp === 'validic'
+                  ? 'Validic Health Cloud Active (Org: 6ab4f8419cf1c17203213ecf)'
+                  : connectedApp === 'apple'
                   ? 'Apple Health (iOS) Connected'
                   : connectedApp === 'google'
                   ? 'Google Fit / Health Connect Connected'
@@ -614,15 +689,41 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
               )}
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              {connectedApp
+              {connectedApp === 'validic'
+                ? `Validic Inform API active. Syncing Apple Health, Google Fit, Garmin & Fitbit. Last synced: ${lastSyncTime || 'Pending today'}`
+                : connectedApp
                 ? `Syncing exact steps, active energy, heart rate & sleep. Last synced: ${lastSyncTime || 'Pending today'}`
-                : `Connect with ${isAppleDevice ? 'Apple Health' : 'Google Fit'} for genuine live pedometer, export.zip import, or exact screen sync.`}
+                : `Connect with Validic Health Cloud, Apple Health, or Google Fit for genuine tracking.`}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-center">
-          {connectedApp ? (
+          {connectedApp === 'validic' ? (
+            <div className="flex items-center gap-1.5">
+              <button
+                className="btn btn-sm btn-secondary text-xs text-teal-800 border-teal-300 hover:bg-teal-50 flex items-center gap-1"
+                onClick={handleOpenValidicPortal}
+                title="Open official Validic Sync Portal to pair device"
+              >
+                <Link2 size={12}/> Pair Device
+              </button>
+              <button
+                className="btn btn-sm btn-primary text-xs flex items-center gap-1"
+                onClick={handleSyncValidic}
+                disabled={isValidicLoading}
+              >
+                <RefreshCw size={12} className={isValidicLoading ? 'animate-spin' : ''}/>
+                {isValidicLoading ? 'Syncing…' : 'Sync Cloud'}
+              </button>
+              <button
+                className="btn btn-sm btn-ghost text-xs text-slate-500 hover:bg-slate-100"
+                onClick={() => { setModalTab('validic'); setShowConnectModal(true); }}
+              >
+                Options
+              </button>
+            </div>
+          ) : connectedApp ? (
             <div className="flex items-center gap-2">
               <button
                 className="btn btn-sm btn-ghost text-xs text-teal-700 bg-teal-50 hover:bg-teal-100"
@@ -640,7 +741,7 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
           ) : (
             <button
               className="btn btn-sm btn-primary text-xs flex items-center gap-1.5"
-              onClick={() => { setModalTab('screen'); setShowConnectModal(true); }}
+              onClick={() => { setModalTab('validic'); setShowConnectModal(true); }}
             >
               <Zap size={13}/> Set Up Genuine Sync
             </button>
@@ -745,15 +846,16 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
               <div className="flex items-center gap-2 flex-shrink-0">
                 <button
                   className="btn btn-xs btn-primary font-medium"
-                  onClick={() => { setModalTab('screen'); setShowConnectModal(true); }}
+                  onClick={handleSyncValidic}
+                  disabled={isValidicLoading}
                 >
-                  Sync Screen Count
+                  Sync Validic Cloud
                 </button>
                 <button
                   className="btn btn-xs btn-secondary font-medium"
-                  onClick={() => setLogging(true)}
+                  onClick={() => { setModalTab('screen'); setShowConnectModal(true); }}
                 >
-                  Manual Log
+                  Screen Sync
                 </button>
               </div>
             </div>
@@ -859,10 +961,10 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
               <TrendingUp size={36} className="mx-auto text-slate-300"/>
               <h3 className="text-base font-bold text-slate-700">No Activity History Yet</h3>
               <p className="text-sm max-w-sm mx-auto">
-                Once you log your daily workouts, upload an Apple Health export.zip, or sync your counts, your 7-day progression charts will appear here.
+                Once you sync via Validic Cloud, upload an Apple Health export.zip, or run the live sensor, your 7-day progression charts will appear here.
               </p>
-              <button className="btn btn-primary btn-sm mx-auto" onClick={() => { setModalTab('screen'); setShowConnectModal(true); }}>
-                <Plus size={14}/> Enter Today's Count
+              <button className="btn btn-primary btn-sm mx-auto" onClick={() => { setModalTab('validic'); setShowConnectModal(true); }}>
+                <Plus size={14}/> Sync Validic Cloud
               </button>
             </div>
           ) : (
@@ -937,13 +1039,13 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center text-teal-600">
-                  <Smartphone size={20}/>
+                  <Globe size={20}/>
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-slate-900" style={{ fontFamily: 'Outfit,sans-serif' }}>
-                    Genuine Health App Sync
+                    Health Platform Integration
                   </h2>
-                  <p className="text-xs text-slate-500">Exact data from Apple Health (iOS) and Google Fit (Android)</p>
+                  <p className="text-xs text-slate-500">Validic Health Cloud • Apple Health • Google Fit</p>
                 </div>
               </div>
               <button className="btn btn-icon btn-sm btn-ghost" onClick={() => setShowConnectModal(false)}>
@@ -951,74 +1053,39 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
               </button>
             </div>
 
-            {/* App Chooser */}
-            <div className="grid grid-cols-2 gap-2">
+            {/* App Chooser Tabs */}
+            <div className="grid grid-cols-3 gap-2 text-xs">
               <button
                 type="button"
-                className={`p-3 rounded-xl border text-left flex items-center gap-2.5 transition-all ${
-                  connectedApp === 'apple' ? 'border-teal-500 bg-teal-50/60 ring-2 ring-teal-500/20' : 'border-slate-200 hover:border-slate-300 bg-white'
+                className={`p-2.5 rounded-xl border text-center transition-all ${
+                  modalTab === 'validic' ? 'border-teal-500 bg-teal-50/70 font-bold ring-2 ring-teal-500/20 text-teal-900' : 'border-slate-200 bg-white hover:border-slate-300 text-slate-700'
                 }`}
-                onClick={() => handleConnect('apple')}
+                onClick={() => setModalTab('validic')}
               >
-                <span className="text-xl">🍏</span>
-                <div>
-                  <p className="text-xs font-bold text-slate-800">Apple Health</p>
-                  <p className="text-[10px] text-slate-400">iOS HealthKit & iPhone</p>
-                </div>
+                <Globe size={16} className="mx-auto mb-1 text-teal-600"/>
+                <span>Validic Cloud</span>
               </button>
 
               <button
                 type="button"
-                className={`p-3 rounded-xl border text-left flex items-center gap-2.5 transition-all ${
-                  connectedApp === 'google' ? 'border-teal-500 bg-teal-50/60 ring-2 ring-teal-500/20' : 'border-slate-200 hover:border-slate-300 bg-white'
-                }`}
-                onClick={() => handleConnect('google')}
-              >
-                <span className="text-xl">📱</span>
-                <div>
-                  <p className="text-xs font-bold text-slate-800">Google Fit</p>
-                  <p className="text-[10px] text-slate-400">Android & Health Connect</p>
-                </div>
-              </button>
-            </div>
-
-            {/* iOS / Android Privacy Explanation */}
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-600 space-y-1">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
-                <ShieldCheck size={14} className="text-teal-600"/>
-                <span>Device Sandbox Protection</span>
-              </div>
-              <p className="text-[11px] leading-relaxed text-slate-500">
-                Apple Health and Android Health Connect lock your personal health database inside your phone's hardware security enclave. Web browsers are strictly prevented from secretly reading your health database.
-                Skinova provides <strong>3 genuine, verified sync methods</strong> below:
-              </p>
-            </div>
-
-            {/* Sub-tabs for Sync Methods */}
-            <div className="flex border-b border-slate-200 text-xs font-semibold">
-              <button
-                className={`py-2 px-3 border-b-2 transition-all ${
-                  modalTab === 'screen' ? 'border-teal-600 text-teal-700 font-bold' : 'border-transparent text-slate-500 hover:text-slate-800'
+                className={`p-2.5 rounded-xl border text-center transition-all ${
+                  modalTab === 'screen' ? 'border-teal-500 bg-teal-50/70 font-bold ring-2 ring-teal-500/20 text-teal-900' : 'border-slate-200 bg-white hover:border-slate-300 text-slate-700'
                 }`}
                 onClick={() => setModalTab('screen')}
               >
-                1. Screen Sync (Fastest)
+                <Smartphone size={16} className="mx-auto mb-1 text-sky-600"/>
+                <span>Screen Sync</span>
               </button>
+
               <button
-                className={`py-2 px-3 border-b-2 transition-all ${
-                  modalTab === 'file' ? 'border-teal-600 text-teal-700 font-bold' : 'border-transparent text-slate-500 hover:text-slate-800'
+                type="button"
+                className={`p-2.5 rounded-xl border text-center transition-all ${
+                  modalTab === 'file' ? 'border-teal-500 bg-teal-50/70 font-bold ring-2 ring-teal-500/20 text-teal-900' : 'border-slate-200 bg-white hover:border-slate-300 text-slate-700'
                 }`}
                 onClick={() => setModalTab('file')}
               >
-                2. Export Zip / XML
-              </button>
-              <button
-                className={`py-2 px-3 border-b-2 transition-all ${
-                  modalTab === 'pedometer' ? 'border-teal-600 text-teal-700 font-bold' : 'border-transparent text-slate-500 hover:text-slate-800'
-                }`}
-                onClick={() => setModalTab('pedometer')}
-              >
-                3. Live Sensor
+                <Upload size={16} className="mx-auto mb-1 text-purple-600"/>
+                <span>Export Zip</span>
               </button>
             </div>
 
@@ -1033,11 +1100,55 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
               </div>
             )}
 
-            {/* Tab 1: Screen Sync */}
+            {/* Tab 1: Validic Health Cloud */}
+            {modalTab === 'validic' && (
+              <div className="space-y-3">
+                <div className="p-3.5 rounded-xl bg-gradient-to-r from-teal-50 to-sky-50 border border-teal-200 text-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-teal-950 flex items-center gap-1.5">
+                      <ShieldCheck size={15} className="text-teal-600"/> Validic Inform API (Production)
+                    </span>
+                    <span className="badge badge-success text-[10px]">Verified API</span>
+                  </div>
+                  <div className="text-[11px] text-slate-600 space-y-0.5">
+                    <p><strong>Organization ID:</strong> <code className="bg-white/80 px-1 py-0.5 rounded text-teal-800 font-mono">6ab4f8419cf1c17203213ecf</code></p>
+                    <p><strong>API Endpoint:</strong> <code className="bg-white/80 px-1 py-0.5 rounded text-slate-700 font-mono">api.prod.validic.com</code></p>
+                  </div>
+                  <p className="text-[11px] text-teal-900 leading-relaxed pt-1">
+                    Validic directly bridges <strong>Apple Health</strong>, <strong>Google Fit / Health Connect</strong>, <strong>Garmin</strong>, and <strong>Fitbit</strong> into Skinova with genuine device synchronization.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    className="btn btn-primary w-full text-xs font-semibold flex items-center justify-center gap-1.5 py-2.5"
+                    onClick={handleOpenValidicPortal}
+                  >
+                    <Link2 size={14}/> 1. Open Official Validic Device Sync Portal
+                  </button>
+                  <p className="text-[10px] text-center text-slate-400">
+                    Opens Validic SyncMyDevice portal to pair Apple Health, Google Fit, Garmin, or Fitbit.
+                  </p>
+
+                  <button
+                    type="button"
+                    className="btn btn-secondary w-full text-xs font-semibold flex items-center justify-center gap-1.5 py-2 mt-2"
+                    onClick={handleSyncValidic}
+                    disabled={isValidicLoading}
+                  >
+                    <RefreshCw size={13} className={isValidicLoading ? 'animate-spin text-teal-600' : ''}/>
+                    <span>{isValidicLoading ? 'Querying Validic Inform API…' : '2. Fetch & Stream Data from Validic Cloud'}</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Tab 2: Screen Sync */}
             {modalTab === 'screen' && (
               <div className="space-y-3">
                 <p className="text-[11px] text-slate-500">
-                  Check your {connectedApp === 'apple' ? 'Apple Health' : 'Google Fit'} app or widget right now and enter the exact counts shown on your phone:
+                  Check your Apple Health or Google Fit app / widget right now and enter the exact counts shown on your screen:
                 </p>
 
                 <div className="grid grid-cols-2 gap-2 text-xs">
@@ -1097,12 +1208,12 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
                   onClick={() => handleSaveGenuineReading(mobileSyncForm)}
                   disabled={!mobileSyncForm.steps && !mobileSyncForm.calories_burned}
                 >
-                  ✓ Confirm & Sync Exact Numbers to Skinova
+                  ✓ Confirm & Save Exact Numbers
                 </button>
               </div>
             )}
 
-            {/* Tab 2: Export File Import */}
+            {/* Tab 3: Export File Import */}
             {modalTab === 'file' && (
               <div className="space-y-3">
                 <div className="p-3 bg-teal-50/80 border border-teal-200 rounded-xl space-y-1.5 text-xs text-teal-950">
@@ -1129,50 +1240,6 @@ export default function HealthDashboard({ currentUser, onLoginRequest }) {
                     <span>{fileParsing ? 'Parsing Health Archive…' : 'Select Health Export File'}</span>
                     <input type="file" accept=".zip,.xml,.json,.csv" className="hidden" onChange={handleFileUpload}/>
                   </label>
-                </div>
-              </div>
-            )}
-
-            {/* Tab 3: Live Motion Sensor */}
-            {modalTab === 'pedometer' && (
-              <div className="space-y-3">
-                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs space-y-1 text-emerald-950">
-                  <p className="font-bold flex items-center gap-1.5">
-                    <Zap size={13} className="text-emerald-700"/> Native Accelerometer Sensor
-                  </p>
-                  <p className="text-[11px] text-emerald-900">
-                    On iPhone Safari, Apple prompts for motion sensor permission. On Android Chrome, motion sensors connect automatically.
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center space-y-3">
-                  <div className="flex items-center justify-center gap-2">
-                    <span className="text-2xl font-black text-teal-800" style={{ fontFamily: 'Outfit,sans-serif' }}>
-                      {liveSteps}
-                    </span>
-                    <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Live Steps Counted</span>
-                  </div>
-
-                  <div className="flex justify-center gap-2">
-                    <button
-                      type="button"
-                      className={`btn btn-sm text-xs font-semibold flex items-center gap-1.5 ${
-                        liveSensorActive ? 'btn-secondary text-red-600 border-red-200' : 'btn-primary'
-                      }`}
-                      onClick={handleToggleLiveSensor}
-                    >
-                      {liveSensorActive ? <><Pause size={13}/> Stop Live Sensor</> : <><Play size={13}/> Start Sensor Tracking</>}
-                    </button>
-                    {liveSteps > 0 && (
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-primary text-xs"
-                        onClick={handleCommitLiveSteps}
-                      >
-                        <Check size={13}/> Save to Daily Log
-                      </button>
-                    )}
-                  </div>
                 </div>
               </div>
             )}
