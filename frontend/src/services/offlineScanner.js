@@ -72,25 +72,39 @@ export async function getOfflineSession() {
   if (sessionLoadingPromise) return sessionLoadingPromise;
 
   sessionLoadingPromise = (async () => {
+    // 1. First attempt: Origin-qualified local self-hosted WASM (/wasm/)
+    // Using full origin URL prevents Vite dev server from intercepting it as a source-code module import
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const localWasmPath = origin ? `${origin}/wasm/` : '/wasm/';
+    const modelUrl = '/models/skinova_efficientnetb0_int8.onnx';
+
     try {
-      // Configure ONNX runtime web to load local self-hosted WASM files
-      // 100% offline, zero reliance on external CDNs or network connectivity
-      ort.env.wasm.wasmPaths = '/wasm/';
+      ort.env.wasm.wasmPaths = localWasmPath;
       ort.env.wasm.numThreads = 1;
       ort.env.wasm.simd = true;
 
-      // Model served from frontend public folder (4.39 MB)
-      const modelUrl = '/models/skinova_efficientnetb0_int8.onnx';
       const session = await ort.InferenceSession.create(modelUrl, {
         executionProviders: ['wasm'],
         graphOptimizationLevel: 'all',
       });
       cachedSession = session;
       return session;
-    } catch (err) {
-      console.error('[SKINOVA Offline Engine] Failed to load ONNX model:', err);
-      sessionLoadingPromise = null;
-      throw new Error(`Offline AI model could not be initialized: ${err.message}`);
+    } catch (localErr) {
+      console.warn('[SKINOVA Offline Engine] Local WASM init attempt failed, trying CDN fallback:', localErr);
+      // 2. Second attempt: Official ONNX Runtime Web CDN fallback
+      try {
+        ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.30.0/dist/';
+        const session = await ort.InferenceSession.create(modelUrl, {
+          executionProviders: ['wasm'],
+          graphOptimizationLevel: 'all',
+        });
+        cachedSession = session;
+        return session;
+      } catch (cdnErr) {
+        console.error('[SKINOVA Offline Engine] All ONNX backends failed:', cdnErr);
+        sessionLoadingPromise = null;
+        throw new Error(`Offline AI model could not be initialized: ${cdnErr.message}`);
+      }
     }
   })();
 
